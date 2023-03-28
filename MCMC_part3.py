@@ -13,15 +13,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.stats as stats
 
-from test_sampling import sample_amazon_posterior
+# Import MCMC sampling routine
+import os, sys
+sys.path.append(os.path.abspath("mcmc"))
+from mcmc_sampling import create_hmc_sampler
 
 # In[ ]:
-
-
-
-
-
-# In[2]:
 
 
 normalization = 1e9
@@ -284,7 +281,7 @@ while error > tol:
         return log_density_val
 
     # Create MCMC sampler & sample, then calculate diagnostics
-    sampler = sample_amazon_posterior(prob_space_size=probability_space_size,
+    sampler = create_hmc_sampler(size=probability_space_size,
                                       log_density=log_density_value,
                                       )
     collected_ensemeble = sampler.sample(sample_size=sample_size,
