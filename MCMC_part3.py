@@ -111,7 +111,6 @@ Bdym = Bdym.T
 
 Adym = (np.linspace(1,200,200)*np.ones((1,200))).T
 
-
 # # Explaining the Code
 #
 #
@@ -255,7 +254,7 @@ while error > tol:
     fγ̄ =   -.5 * (γ_post_list - γ_list_mean_posterior).T @ np.linalg.inv(cov_list) @ (γ_post_list - γ_list_mean_posterior)
 
     def log_density_value(gamma_val):
-        γ_list_prime = gamma_val
+        γ_list_prime = np.asarray(gamma_val).flatten()
 
         # TODO: Handle constraints
         x0_list = γ_list_prime.T * df['forestArea_2017_ha_10Sites'].to_numpy()
@@ -268,6 +267,9 @@ while error > tol:
         X_zero_list = np.sum(X0_list)*np.ones((200,1))
         X_dym_list[:,0] = np.sum(X0_list)
         ω =   (γ_list_prime.T@(α*z̄_comp.T- α*sol.value(X)[0:n,:-1]) -γ_list_prime.T@sol.value(Up))
+
+        # TODO: FIX the following line, dimensions, and shapes are troublesome!
+        # print((Bdym@ω.T ).shape)
         X_dym_list[:,1:] =( (((1-α)**Adym))*X_zero_list  + (Bdym@ω.T )  ).T
 
         objective_value = -(sum2(ds_vect[0:T,:].T*(sol.value(Ua)* ζ/2 ))
