@@ -336,7 +336,7 @@ class HMCSampler(Sampler):
         self._MASS_MATRIX_SQRT = self.__factorize_spsd_matrix(self._MASS_MATRIX)
 
 
-    def __create_func_grad(self, func, size, approach='fd'):
+    def __create_func_grad(self, func, size, approach='fd', fd_eps=1e-5, fd_central=False):
         """
         Given a callable/function `func`, create a function that evaluates the gradient of this function
         :param int size: the domain size which determines the size of the returned gradient
@@ -346,7 +346,7 @@ class HMCSampler(Sampler):
             the current platform, otherwise finite differences 'fd' is used
         """
         if re.match(r"\A(f(-|_| )*d|finite(-|_| )*difference(s)*)\Z", approach, re.IGNORECASE):
-            def func_grad(x, fd_eps=1e-7, fd_central=False):
+            def func_grad(x, fd_eps=fd_eps, fd_central=fd_central):
                 """Function to generate gradient using finite differences"""
                 x    = np.asarray(x).flatten()
                 grad = np.zeros_like(x)
@@ -598,7 +598,12 @@ class HMCSampler(Sampler):
         Evaluate the value of the logarithm of the target unscaled posterior density function
         """
         val = self._LOG_DENSITY(state)
-        if isinstance(val, np.ndarray) and val.size == 1: val = val[0]
+        try:
+            val[0]
+            val = np.asarray(val).flatten()[0]
+        except:
+            pass
+        # if isinstance(val, np.ndarray) and val.size == 1: val = val.flatten()[0]
         return val
 
     def log_density_grad(self, state):
@@ -751,10 +756,12 @@ class HMCSampler(Sampler):
 
                 # Update state
                 proposed_state = current_state + (0.5*h) * self.mass_matrix_inv_matvec(current_momentum)
+                # print("1: proposed state", proposed_state)
 
                 # Update momentum
                 grad = self.potential_energy_grad(proposed_state)
                 proposed_momentum = current_momentum - h * grad
+                # print("<: proposed momentum", proposed_momentum)
 
                 # Update state again
                 proposed_state += (0.5*h) * self.mass_matrix_inv_matvec(proposed_momentum)
@@ -877,6 +884,8 @@ class HMCSampler(Sampler):
                 symplectic_integrator=symplectic_integrator,
             )
 
+            # print("proposed_momentum, proposed_state", proposed_momentum, proposed_state)
+
             ## MH step (Accept/Reject) proposed (momentum, state)
             # Calculate acceptance proabability
             # Total energy (Hamiltonian) of the extended pair (proposed_momentum,
@@ -908,7 +917,8 @@ class HMCSampler(Sampler):
                 accept_proposal = False
 
             if verbose:
-                print("\rHMC Iteration [{0:4d}/{1:4d}]; Acceptance Probability: {2}; --> Accepted? {3}".format(chain_ind+1, chain_length, acceptance_probability, accept_proposal), end=" ")
+                print(f"\rHMC Iteration [{chain_ind+1:4d}/{chain_length:4d}]; Accept Prob: {acceptance_probability:3.2f}; --> Accepted? {accept_proposal}", end="  ")
+
 
             # Update Results Repositories:
             proposals_repository.append(proposed_state)
