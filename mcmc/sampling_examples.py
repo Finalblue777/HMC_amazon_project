@@ -9,24 +9,6 @@ import seaborn as sns
 from mcmc_sampling import create_hmc_sampler
 
 
-def evaluate_pdf(x, verpose=False, from_energy=True):
-    """
-    Evaluate the probability density function at a given value x.
-    x: state at which pdf is evaluated
-    """
-    potential_energy = banana_potential_energy_value(x)
-    pdf_val = np.exp(- potential_energy)
-
-    if verpose:
-        print('PDF Value (upto scaling cons = %8.7e ' % (pdf_val))
-    #
-    if isinstance(pdf_val, np.ndarray):
-        if pdf_val.size == 1:
-            pdf_val = pdf_val[0]
-        else:
-            raise ValueError("Somethong wrong with the type or dimensions of pdf_val!")
-    return pdf_val
-
 def banana_potential_energy_value(state, a=2.15, b=0.75, rho=0.9, ):
     """
     Potential energy of the posterir. This is dependent on the target state, not the momentum.
@@ -74,6 +56,27 @@ def sample_banana_distribution(sample_size):
     return sample
 
 
+def evaluate_pdf(x, verpose=False, from_energy=True):
+    """
+    Evaluate the probability density function at a given value x.
+    x: state at which pdf is evaluated
+    """
+    potential_energy = banana_potential_energy_value(x)
+    pdf_val = np.exp(- potential_energy)
+
+    if verpose:
+        print('PDF Value (upto scaling cons = %8.7e ' % (pdf_val))
+    #
+    if isinstance(pdf_val, np.ndarray):
+        if pdf_val.size == 1:
+            pdf_val = pdf_val[0]
+        else:
+            raise ValueError("Somethong wrong with the type or dimensions of pdf_val!")
+    return pdf_val
+
+
+
+
 def plot_enhancer(fontsize=14, font_weight='bold', usetex=False):
     font_dict = {'weight': font_weight, 'size': fontsize}
     plt.rc('font', **font_dict)
@@ -86,12 +89,12 @@ def start_plotting_2d(collected_ensemble,
                       linewidth=1.0,
                       markersize=3,
                       fontsize=18,
+                      keep_plots=False,
                       ):
     """
     """
     print("*** Creating 2D plots ***")
 
-    plt.close('all')
     # Plot resutls:
     actual_ens = np.asarray(collected_ensemble)
     sample_size = np.size(actual_ens, 0)
@@ -149,7 +152,8 @@ def start_plotting_2d(collected_ensemble,
     filename = "MCMC_diagnostics.mp4"
     ani.save(filename, dpi=900)
     print(f"Saved plot to {filename}")
-    plt.close(fig1)
+    if not keep_plots:
+        plt.close(fig1)
 
     #
     # Plot prior, likelihood, posterior, and histogram
@@ -193,14 +197,15 @@ def start_plotting_2d(collected_ensemble,
     filename = "MCMC_diagnostics.pdf"
     fig2.savefig(filename, dpi=900, bbox_inches='tight', facecolor='white', format='pdf')
     print(f"Saved plot to {filename}")
-    plt.close(fig2)
+    if not keep_plots:
+        plt.close(fig2)
 
 
-def start_plotting_nd(collected_ensemble, labels=None, ):
+def start_plotting_nd(collected_ensemble, labels=None, keep_plots=False, ):
     """
     """
     print("*** Creating bivariate plots array ***")
-    plt.close('all')
+    # plt.close('all')
     # Plot resutls:
     actual_ens = np.asarray(collected_ensemble)
     sample_size, nvars = actual_ens.shape
@@ -217,11 +222,12 @@ def start_plotting_nd(collected_ensemble, labels=None, ):
     filename = "MCMC_PairPlot.pdf"
     g.savefig(filename, dpi=900, bbox_inches='tight', facecolor='white', format='pdf')
     print(f"Saved plot to {filename}")
-    plt.close(g.figure)
+    if not keep_plots:
+        plt.close(g.figure)
 
     # start_plotting_2d(sample)
     if nvars == 2:
-        start_plotting_2d(sample)
+        start_plotting_2d(sample, keep_plots=keep_plots, )
 
 if __name__ == '__main__':
     sample = sample_banana_distribution(100)

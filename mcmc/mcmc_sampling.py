@@ -145,6 +145,7 @@ class HMCSampler(Sampler):
         'symplectic_integrator_stepsize':1e-2,
         'symplectic_integrator_num_steps':20,
         'mass_matrix':1,
+        'constraint_test':None,
     }
 
     def __init__(self, configs=_DEF_CONFIGURATIONS):
@@ -175,6 +176,7 @@ class HMCSampler(Sampler):
                 over the Hamiltonian trajectory
             'mass_matrix': (nonzero scalar or SPD array of size `size x size`)  mass matrix
                 to be used to adjust sampling the auxilliary Gaussian momentum
+            'constraint_test': a function that returns a boolean value `True` if sample point satisfy any constrints, and `False` otherwise
 
         :remarks:
             - Validation of the configurations dictionary is taken care of in the super class
@@ -483,6 +485,16 @@ class HMCSampler(Sampler):
                 is_valid = False
                 return is_valid
 
+        # Test constraint function (if provided)
+        constraint_test = aggr_configs['constraint_test']
+        if callable(constraint_test):
+            try:
+                assert constraint_test(np.random.rand(size)) in [False, True], "Constraint test must report True/False!"
+            except:
+                print("The constraint test didn't work as expected!")
+                raise
+        else:
+            assert constraint_test is None, "`constraint_test` must be either a callable of None!"
 
         ## Mass matrix (covariance of the momentum)
         mass_matrix = aggr_configs['mass_matrix']
@@ -836,6 +848,7 @@ class HMCSampler(Sampler):
         symplectic_integrator = self._CONFIGURATIONS['symplectic_integrator']
         hamiltonian_step_size = self._CONFIGURATIONS['symplectic_integrator_stepsize']
         hamiltonian_num_steps = self._CONFIGURATIONS['symplectic_integrator_num_steps']
+        constraint_test       = self._CONFIGURATIONS['constraint_test']
 
         liner, sliner = '=' * 53, '-' * 40
         if verbose:
@@ -891,17 +904,25 @@ class HMCSampler(Sampler):
             # Total energy (Hamiltonian) of the extended pair (proposed_momentum,
             # Here, we evaluate the kernel of the posterior at both the current and the proposed state proposed_state)
             current_energy  = self.total_Hamiltonian(momentum=current_momentum, state=current_state)
-            proposal_energy = self.total_Hamiltonian(momentum=proposed_momentum, state=proposed_state)
-            energy_loss = proposal_energy - current_energy
-            _loss_thresh = 1000
-            if False and abs(energy_loss) >= _loss_thresh:  # this should avoid overflow errors
-                if energy_loss < 0:
-                    sign = -1
-                else:
-                    sign = 1
-                energy_loss = sign * _loss_thresh
-            acceptance_probability = np.exp(-energy_loss)
-            acceptance_probability = min(acceptance_probability, 1.0)
+            constraint_violated = False
+            if constraint_test is not None:
+                if not constraint_test(proposed_state): constraint_violated = True
+
+            if constraint_violated:
+                acceptance_probability = 0
+
+            else:
+                proposal_energy = self.total_Hamiltonian(momentum=proposed_momentum, state=proposed_state)
+                energy_loss = proposal_energy - current_energy
+                _loss_thresh = 1000
+                if abs(energy_loss) >= _loss_thresh:  # this should avoid overflow errors
+                    if energy_loss < 0:
+                        sign = -1
+                    else:
+                        sign = 1
+                    energy_loss = sign * _loss_thresh
+                acceptance_probability = np.exp(-energy_loss)
+                acceptance_probability = min(acceptance_probability, 1.0)
 
             # a uniform random number between 0 and 1
             np_state = np.random.get_state()
@@ -1030,6 +1051,7 @@ def create_hmc_sampler(size,
                        symplectic_integrator_stepsize=1e-2,
                        symplectic_integrator_num_steps=20,
                        mass_matrix=1e-1,
+                       constraint_test=None,
                        ):
     """
     Given the size of the target space, and a function to evalute log density,
@@ -1048,6 +1070,7 @@ def create_hmc_sampler(size,
         symplectic_integrator_stepsize=symplectic_integrator_stepsize,
         symplectic_integrator_num_steps=symplectic_integrator_num_steps,
         mass_matrix=mass_matrix,
+        constraint_test=constraint_test,
     )
     return HMCSampler(configs)
 
