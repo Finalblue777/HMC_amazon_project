@@ -738,7 +738,7 @@ class HMCSampler(Sampler):
                 print(f"Received State:\n {repr(state)}")
             # raise ValueError
             return np.nan
-        return -self.log_density(state)
+        return - self.log_density(state)
 
     def potential_energy_grad(self, state, verbose=False):
         """
@@ -752,7 +752,7 @@ class HMCSampler(Sampler):
                 print(f"Received State:\n {repr(state)}")
             # raise ValueError
             return np.nan
-        return -self.log_density_grad(state)
+        return - self.log_density_grad(state)
 
     def kinetic_energy(self, momentum):
         """
