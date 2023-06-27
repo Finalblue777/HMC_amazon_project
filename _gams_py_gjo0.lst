@@ -1,0 +1,322 @@
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 00:34:45 Page 1
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+   1  option limrow = 0;
+   2  option limcol = 0;
+   3  option solprint = off;
+   4   
+   5  set T ordered /0*200 /;
+   6  set R ordered /1*25/;
+   7   
+   8  scalar scale / 1.0e6 /;
+   9   
+  10  parameter x0(R) /
+  11  1   427601641.9
+  12  2   2893825773
+  13  3   8294953936
+  14  4   5103976370
+  15  5   7924642856
+  16  6   2155085976
+  17  7   15052247734
+  18  8   12862499767
+  19  9   14699451402
+  20  10  14270015239
+  21  11  5186640337
+  22  12  145894448.8
+  23  13  17292665424
+  24  14  17933194552
+  25  15  14948564283
+  26  16  16493423849
+  27  17  12261035583
+  28  18  1161176040
+  29  19  3461828171
+  30  20  3833685435
+  31  21  7982992100
+  32  22  5615333536
+  33  23  4130250287
+  34  24  241606922.6
+  35  25  329960716
+  36  /;
+  37   
+  38  parameter z0(R) /
+  39  1   577.0929401
+  40  2   5589.185181
+  41  3   787674.0828
+  42  4   9646.861745
+  43  5   128634.5031
+  44  6   16248.65369
+  45  7   77127.05958
+  46  8   413615.3759
+  47  9   1415637.311
+  48  10  2975490.403
+  49  11  7911410.246
+  50  12  311951.5001
+  51  13  491859.8041
+  52  14  548889.5383
+  53  15  1193672.493
+  54  16  1416617.977
+  55  17  6055143.679
+  56  18  6746442.015
+  57  19  84410.49025
+  58  20  2448200.526
+  59  21  7385903.416
+  60  22  8456499.239
+  61  23  5225548.432
+  62  24  860690.5049
+  63  25  2311937.326
+  64  /;
+  65   
+  66  parameter zbar(R) /
+  67  1   827842.673
+  68  2   5923957.508
+  69  3   16269303.58
+  70  4   8317106.102
+  71  5   11492722.45
+  72  6   3641993.119
+  73  7   27941871.29
+  74  8   26031526.11
+  75  9   26494123.96
+  76  10  25883433.49
+  77  11  18981310.08
+  78  12  986453.6577
+  79  13  23983732.12
+  80  14  28379164.51
+  81  15  27505450.39
+  82  16  28080696.69
+  83  17  27530403.94
+  84  18  9828455.437
+  85  19  4377913.526
+  86  20  8346530.632
+  87  21  21218696.15
+  88  22  20770966.56
+  89  23  16507489.38
+  90  24  1577160.408
+  91  25  3458325.658
+  92  /;
+  93   
+  94  parameter gamma(R) /
+  95  1   516.8855713
+  96  2   488.9566879
+  97  3   535.7933372
+  98  4   614.3847623
+  99  5   697.3408596
+ 100  6   594.3844076
+ 101  7   540.1896967
+ 102  8   502.0901158
+ 103  9   586.1378962
+ 104  10  622.9287015
+ 105  11  468.5354354
+ 106  12  216.2994546
+ 107  13  736.1126944
+ 108  14  644.377196
+ 109  15  568.1320488
+ 110  16  618.5634249
+ 111  17  570.9376946
+ 112  18  376.7589174
+ 113  19  806.2945668
+ 114  20  649.9611529
+ 115  21  577.1063191
+ 116  22  455.9948383
+ 117  23  366.0939467
+ 118  24  337.218523
+ 119  25  287.8263035
+ 120  /;
+ 121   
+ 122  parameter theta(R) /
+ 123  1   0.009738465
+ 124  2   0.009740588
+ 125  3   0.145421111
+ 126  4   1.223269896
+ 127  5   1.438574328
+ 128  6   0.410137633
+ 129  7   0.605161235
+ 130  8   1.129249341
+ 131  9   1.681938657
+ 132  10  1.956043569
+ 133  11  1.730931241
+ 134  12  1.039779454
+ 135  13  1.475119096
+ 136  14  1.482043734
+ 137  15  2.150337598
+ 138  16  1.888581761
+ 139  17  1.922081002
+ 140  18  2.117680047
+ 141  19  2.226926842
+ 142  20  2.382020709
+ 143  21  2.98371336
+ 144  22  2.606553494
+ 145  23  2.120503281
+ 146  24  2.701969861
+ 147  25  2.662808546
+ 148  /;
+ 149   
+ 150  parameter delta / 0.02 /;
+ 151  parameter p_e / 20.76 /;
+ 152      parameter p_a / 44.75/;
+ 153   
+ 154  parameter alpha / 0.045007414 /;
+ 155  parameter kappa / 2.094215255 /;
+ 156  parameter zeta / 1.66e-04 /;
+ 157  parameter dt /1 /;
+ 158   
+ 159   
+ 160  parameter x_agg(T);
+ 161  parameter z_agg(T);
+ 162  parameter u_agg(T);
+ 163  parameter v_agg(T);
+ 164  parameter c_agg(T);
+ 165   
+ 166  positive variable z(T,R);
+ 167  positive variable u(T,R);
+ 168  positive variable v(T,R);
+ 169           variable x(T,R);
+ 170           variable w(T);
+ 171           variable obj;
+ 172   
+ 173  equation zdot_def(T,R);
+ 174  equation xdot_def(T,R);
+ 175  equation w_def(T);
+ 176  equation obj_def;
+ 177   
+ 178  zdot_def(T,R)$(ord(T) < card(T))..
+ 179   ( z(T+1,R) - z(T,R))/dt =e= (u(T,R) - v(T,R));
+ 180   
+ 181  xdot_def(T,R)$(ord(T) < card(T))..
+ 182    (x(T+1,R) - x(T,R))/dt =e= (-gamma(R)*u(T,R) - alpha*x(T,R) + alpha*gamma(R)*(zbar(R)/scale - z(T,R)));
+ 183   
+ 184  w_def(T)$(ord(T) < card(T))..
+ 185    w(T) =e= sum(R, u(T,R) + v(T,R));
+ 186   
+ 187  obj_def..
+ 188    obj =e= sum(T$(ord(T) < card(T)), exp(-delta*(ord(T)*dt-dt))*(-p_e*sum(R, kappa*z(T,R) - (x(T+1,R) - x(T,R))/dt) + p_a*sum(R, theta(R)*z(T,R)) - scale*zeta/2*sqr(w(T)))*dt);
+ 189   
+ 190  model amazon / all /;
+ 191   
+ 192  file results / amazon_data.dat /;
+ 193  file regionresults / amazon_data.dat /;
+ 194  regionresults.pw = 163840000;
+ 195   
+ 196  x.fx(T,R)$(ord(T) = 1) = x0(R) / scale;
+ 197  z.fx(T,R)$(ord(T) = 1) = z0(R) / scale;
+ 198  z.up(T,R)$(ord(T) > 1) = zbar(R) / scale ;
+ 199  u.fx(T,R)$(ord(T) = card(T)) = 0;
+ 200  v.fx(T,R)$(ord(T) = card(T)) = 0;
+ 201  w.fx(T)$(ord(T) = card(T)) = 0;
+ 202   
+ 203  option qcp = cplex;
+ 204  solve amazon using qcp maximizing  obj;
+ 205   
+ 206  x_agg(T) = scale*sum(R, x.l(T,R));
+ 207  z_agg(T) = scale*sum(R, z.l(T,R));
+ 208  u_agg(T) = scale*sum(R, u.l(T,R));
+ 209  v_agg(T) = scale*sum(R, v.l(T,R));
+ 210  c_agg(T) = scale*scale*sum(R, u.l(T,R)*v.l(T,R));
+ 211   
+ 212  put results;
+ 213  put // 'p_e = ' p_e '  obj = ' obj.l //;
+ 214  put 'T':4 system.tab 'x_agg':20 system.tab 'z_agg':20 system.tab 'u_agg':20 system.tab 'v_agg':20 system.tab 'c_agg':20 /;
+ 215  loop(T, put T.tl:4 system.tab x_agg(T):20:16 system.tab z_agg(T):20:16 system.tab u_agg(T):20:16 system.tab v_agg(T):20:16system.tab c_agg(T):20:16 /);
+ 216  putclose;
+ 217   
+ 218  put regionresults;
+ 219  put // 'p_e = ' p_e '  obj = ' obj.l //;
+ 220  put 'T/R':4;
+ 221  loop(R, put system.tab R.tl:10);
+ 222  put /;
+ 223  loop(T,
+ 224    put T.tl:4;
+ 225    loop(R, put system.tab (scale*z.l(T,R)):16:10);
+ 226    put /;
+ 227  );
+ 228  putclose;
+ 229   
+
+
+COMPILATION TIME     =        0.000 SECONDS      3 MB  43.4.1 3da5975b WEX-WEI
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 00:34:45 Page 2
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+E x e c u t i o n
+
+
+**** PUT ERROR FOR FILE regionresults AT LINE 194: File attribute argument too large, reset to 32767
+
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 00:34:45 Page 3
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Model Statistics    SOLVE amazon Using QCP From line 204
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS           4     SINGLE EQUATIONS       10,201
+BLOCKS OF VARIABLES           6     SINGLE VARIABLES       20,251
+NON ZERO ELEMENTS        60,426     NON LINEAR N-Z            200
+CODE LENGTH               1,003     CONSTANT POOL             216
+
+
+GENERATION TIME      =        0.016 SECONDS     10 MB  43.4.1 3da5975b WEX-WEI
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 00:34:45 Page 4
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Solution Report     SOLVE amazon Using QCP From line 204
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   amazon              OBJECTIVE  obj
+     TYPE    QCP                 DIRECTION  MAXIMIZE
+     SOLVER  CPLEX               FROM LINE  204
+
+**** SOLVER STATUS     1 Normal Completion
+**** MODEL STATUS      1 Optimal
+**** OBJECTIVE VALUE           370638.7968
+
+ RESOURCE USAGE, LIMIT          0.062 10000000000.000
+ ITERATION COUNT, LIMIT         0    2147483647
+ EVALUATION ERRORS             NA             0
+--- GAMS/CPLEX licensed for continuous and discrete problems.
+--- GMO Q Extraction (ThreePass): 0.00s
+--- GMO setup time: 0.00s
+--- Space for names approximately 0.56 Mb
+--- Use option 'names no' to turn use of names off
+--- GMO memory 8.02 Mb (peak 8.18 Mb)
+--- Dictionary memory 0.00 Mb
+--- Cplex 22.1.1.0 link memory 0.50 Mb (peak 2.04 Mb)
+--- Starting Cplex
+
+
+--- QP status (1): optimal.
+--- Cplex Time: 0.06sec (det. 188.37 ticks)
+
+
+Optimal solution found
+Objective:       370638.796776
+
+
+
+**** REPORT SUMMARY :        0     NONOPT
+                             0 INFEASIBLE
+                             0  UNBOUNDED
+                             0     ERRORS
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 00:34:45 Page 5
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+E x e c u t i o n
+
+
+**** REPORT FILE SUMMARY
+
+results C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project\amazon_data.dat
+regionresults C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project\amazon_data.dat
+
+
+EXECUTION TIME       =        0.125 SECONDS     14 MB  43.4.1 3da5975b WEX-WEI
+
+
+USER: Other License                                  G220831|0002CS-GEN
+      Argonne National Labs, MCS Department                      DCE254
+
+
+**** FILE SUMMARY
+
+Input      C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project\amazon_25sites.gms
+Output     C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project\_gams_py_gjo0.lst
