@@ -1,0 +1,346 @@
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 16:58:56 Page 1
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+   1  option limrow = 0;
+   2  option limcol = 0;
+   3  option solprint = off;
+   4   
+   5  set T ordered /0*200 /;
+   6  set R ordered /1*25/;
+   7   
+   8  scalar scale / 1.0e6 /;
+   9   
+  10  parameter x0(R) /
+  11  1   427601641.9
+  12  2   2893825773
+  13  3   8294953936
+  14  4   5103976370
+  15  5   7924642856
+  16  6   2155085976
+  17  7   15052247734
+  18  8   12862499767
+  19  9   14699451402
+  20  10  14270015239
+  21  11  5186640337
+  22  12  145894448.8
+  23  13  17292665424
+  24  14  17933194552
+  25  15  14948564283
+  26  16  16493423849
+  27  17  12261035583
+  28  18  1161176040
+  29  19  3461828171
+  30  20  3833685435
+  31  21  7982992100
+  32  22  5615333536
+  33  23  4130250287
+  34  24  241606922.6
+  35  25  329960716
+  36  /;
+  37   
+  38  parameter z0(R) /
+  39  1   577.0929401
+  40  2   5589.185181
+  41  3   787674.0828
+  42  4   9646.861745
+  43  5   128634.5031
+  44  6   16248.65369
+  45  7   77127.05958
+  46  8   413615.3759
+  47  9   1415637.311
+  48  10  2975490.403
+  49  11  7911410.246
+  50  12  311951.5001
+  51  13  491859.8041
+  52  14  548889.5383
+  53  15  1193672.493
+  54  16  1416617.977
+  55  17  6055143.679
+  56  18  6746442.015
+  57  19  84410.49025
+  58  20  2448200.526
+  59  21  7385903.416
+  60  22  8456499.239
+  61  23  5225548.432
+  62  24  860690.5049
+  63  25  2311937.326
+  64  /;
+  65   
+  66  parameter zbar(R) /
+  67  1   827842.673
+  68  2   5923957.508
+  69  3   16269303.58
+  70  4   8317106.102
+  71  5   11492722.45
+  72  6   3641993.119
+  73  7   27941871.29
+  74  8   26031526.11
+  75  9   26494123.96
+  76  10  25883433.49
+  77  11  18981310.08
+  78  12  986453.6577
+  79  13  23983732.12
+  80  14  28379164.51
+  81  15  27505450.39
+  82  16  28080696.69
+  83  17  27530403.94
+  84  18  9828455.437
+  85  19  4377913.526
+  86  20  8346530.632
+  87  21  21218696.15
+  88  22  20770966.56
+  89  23  16507489.38
+  90  24  1577160.408
+  91  25  3458325.658
+  92  /;
+  93   
+  94   
+  95  parameter gamma(R);
+GDXIN   C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\GammaData.gdx
+--- LOAD  gamma = 1:dim1
+  99   
+ 100   
+ 101  parameter theta(R) /
+ 102  1   0.009738465
+ 103  2   0.009740588
+ 104  3   0.145421111
+ 105  4   1.223269896
+ 106  5   1.438574328
+ 107  6   0.410137633
+ 108  7   0.605161235
+ 109  8   1.129249341
+ 110  9   1.681938657
+ 111  10  1.956043569
+ 112  11  1.730931241
+ 113  12  1.039779454
+ 114  13  1.475119096
+ 115  14  1.482043734
+ 116  15  2.150337598
+ 117  16  1.888581761
+ 118  17  1.922081002
+ 119  18  2.117680047
+ 120  19  2.226926842
+ 121  20  2.382020709
+ 122  21  2.98371336
+ 123  22  2.606553494
+ 124  23  2.120503281
+ 125  24  2.701969861
+ 126  25  2.662808546
+ 127  /;
+ 128   
+ 129  parameter delta / 0.02 /;
+ 130  parameter p_e / 20.76 /;
+ 131      parameter p_a / 44.75/;
+ 132   
+ 133  parameter alpha / 0.045007414 /;
+ 134  parameter kappa / 2.094215255 /;
+ 135  parameter zeta / 1.66e-04 /;
+ 136  parameter dt /1 /;
+ 137   
+ 138   
+ 139  parameter x_agg(T);
+ 140  parameter z_agg(T);
+ 141  parameter u_agg(T);
+ 142  parameter v_agg(T);
+ 143  parameter c_agg(T);
+ 144   
+ 145  positive variable z(T,R);
+ 146  positive variable u(T,R);
+ 147  positive variable v(T,R);
+ 148           variable x(T,R);
+ 149           variable w(T);
+ 150           variable obj;
+ 151   
+ 152  equation zdot_def(T,R);
+ 153  equation xdot_def(T,R);
+ 154  equation w_def(T);
+ 155  equation obj_def;
+ 156   
+ 157  zdot_def(T,R)$(ord(T) < card(T))..
+ 158   ( z(T+1,R) - z(T,R))/dt =e= (u(T,R) - v(T,R));
+ 159   
+ 160  xdot_def(T,R)$(ord(T) < card(T))..
+ 161    (x(T+1,R) - x(T,R))/dt =e= (-gamma(R)*u(T,R) - alpha*x(T,R) + alpha*gamma(R)*(zbar(R)/scale - z(T,R)));
+ 162   
+ 163  w_def(T)$(ord(T) < card(T))..
+ 164    w(T) =e= sum(R, u(T,R) + v(T,R));
+ 165   
+ 166  obj_def..
+ 167    obj =e= sum(T$(ord(T) < card(T)), exp(-delta*(ord(T)*dt-dt))*(-p_e*sum(R, kappa*z(T,R) - (x(T+1,R) - x(T,R))/dt) + p_a*sum(R, theta(R)*z(T,R)) - scale*zeta/2*sqr(w(T)))*dt);
+ 168   
+ 169  model amazon / all /;
+ 170   
+ 171  file results_x / "C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\amazon_data_x.dat" /;
+ 172  file regionresults_z / "C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\amazon_data_z.dat" /;
+ 173   
+ 174  file regionresults_u / "C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\amazon_data_u.dat" /;
+ 175  file regionresults_v / "C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\amazon_data_v.dat" /;
+ 176   
+ 177  regionresults_u.pw = 163840000;
+ 178  regionresults_v.pw = 163840000;
+ 179  regionresults_z.pw = 163840000;
+ 180  x.fx(T,R)$(ord(T) = 1) = x0(R) / scale;
+ 181  z.fx(T,R)$(ord(T) = 1) = z0(R) / scale;
+ 182  z.up(T,R)$(ord(T) > 1) = zbar(R) / scale ;
+ 183  u.fx(T,R)$(ord(T) = card(T)) = 0;
+ 184  v.fx(T,R)$(ord(T) = card(T)) = 0;
+ 185  w.fx(T)$(ord(T) = card(T)) = 0;
+ 186   
+ 187  option qcp = cplex;
+ 188  solve amazon using qcp maximizing  obj;
+ 189   
+ 190  x_agg(T) = scale*sum(R, x.l(T,R));
+ 191  z_agg(T) = scale*sum(R, z.l(T,R));
+ 192  u_agg(T) = scale*sum(R, u.l(T,R));
+ 193  v_agg(T) = scale*sum(R, v.l(T,R));
+ 194  c_agg(T) = scale*scale*sum(R, u.l(T,R)*v.l(T,R));
+ 195   
+ 196  put results_x;
+ 197  put 'T':4 system.tab 'x_agg':20/;
+ 198  loop(T, put T.tl:4 system.tab x_agg(T):20:16 /);
+ 199  putclose;
+ 200   
+ 201  put regionresults_z;
+ 202  put 'T/R':4;
+ 203  loop(R, put system.tab R.tl:10);
+ 204  put /;
+ 205  loop(T,
+ 206    put T.tl:4;
+ 207    loop(R, put system.tab (scale*z.l(T,R)):16:10);
+ 208   
+ 209    put /;
+ 210  );
+ 211  putclose;
+ 212   
+ 213  put regionresults_u;
+ 214  put 'T/R':4;
+ 215  loop(R, put system.tab R.tl:10);
+ 216  put /;
+ 217  loop(T,
+ 218    put T.tl:4;
+ 219    loop(R, put system.tab (scale*u.l(T,R)):16:10);
+ 220   
+ 221    put /;
+ 222  );
+ 223  putclose;
+ 224   
+ 225  put regionresults_v;
+ 226  put 'T/R':4;
+ 227  loop(R, put system.tab R.tl:10);
+ 228  put /;
+ 229  loop(T,
+ 230    put T.tl:4;
+ 231    loop(R, put system.tab (scale*v.l(T,R)):16:10);
+ 232   
+ 233    put /;
+ 234  );
+ 235  putclose;
+ 236   
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 16:58:56 Page 2
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Include File Summary
+
+
+   SEQ   GLOBAL TYPE      PARENT   LOCAL  FILENAME
+
+     1        1 INPUT          0       0  C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_25sites.gms
+     2       96 CALL           1      96  csv2gdx "C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\GammaData.csv" output="C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\GammaData.gdx" id=dim1 index=1 values=1..lastCol useHeader=y trace=0
+     3       97 GDXIN          1      97  C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\GammaData.gdx
+
+
+COMPILATION TIME     =        0.016 SECONDS      3 MB  43.4.1 3da5975b WEX-WEI
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 16:58:56 Page 3
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+E x e c u t i o n
+
+
+**** PUT ERROR FOR FILE regionresults_u AT LINE 177: File attribute argument too large, reset to 32767
+
+
+**** PUT ERROR FOR FILE regionresults_v AT LINE 178: File attribute argument too large, reset to 32767
+
+
+**** PUT ERROR FOR FILE regionresults_z AT LINE 179: File attribute argument too large, reset to 32767
+
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 16:58:56 Page 4
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Model Statistics    SOLVE amazon Using QCP From line 188
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS           4     SINGLE EQUATIONS       10,201
+BLOCKS OF VARIABLES           6     SINGLE VARIABLES       20,251
+NON ZERO ELEMENTS        50,426     NON LINEAR N-Z            200
+CODE LENGTH               1,003     CONSTANT POOL             216
+
+
+GENERATION TIME      =        0.016 SECONDS      9 MB  43.4.1 3da5975b WEX-WEI
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 16:58:56 Page 5
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Solution Report     SOLVE amazon Using QCP From line 188
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   amazon              OBJECTIVE  obj
+     TYPE    QCP                 DIRECTION  MAXIMIZE
+     SOLVER  CPLEX               FROM LINE  188
+
+**** SOLVER STATUS     1 Normal Completion
+**** MODEL STATUS      1 Optimal
+**** OBJECTIVE VALUE         -2377763.4126
+
+ RESOURCE USAGE, LIMIT          0.047 10000000000.000
+ ITERATION COUNT, LIMIT         0    2147483647
+ EVALUATION ERRORS             NA             0
+--- GAMS/CPLEX licensed for continuous and discrete problems.
+--- GMO Q Extraction (ThreePass): 0.00s
+--- GMO setup time: 0.00s
+--- Space for names approximately 0.56 Mb
+--- Use option 'names no' to turn use of names off
+--- GMO memory 7.52 Mb (peak 7.68 Mb)
+--- Dictionary memory 0.00 Mb
+--- Cplex 22.1.1.0 link memory 0.50 Mb (peak 1.92 Mb)
+--- Starting Cplex
+
+
+--- QP status (1): optimal.
+--- Cplex Time: 0.05sec (det. 162.06 ticks)
+
+
+Optimal solution found
+Objective:     -2377763.412623
+
+
+
+**** REPORT SUMMARY :        0     NONOPT
+                             0 INFEASIBLE
+                             0  UNBOUNDED
+                             0     ERRORS
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/27/23 16:58:56 Page 6
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+E x e c u t i o n
+
+
+**** REPORT FILE SUMMARY
+
+results_x C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\amazon_data_x.dat
+regionresults_z C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\amazon_data_z.dat
+regionresults_u C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\amazon_data_u.dat
+regionresults_v C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project2\amazon_data_v.dat
+
+
+EXECUTION TIME       =        0.109 SECONDS     16 MB  43.4.1 3da5975b WEX-WEI
+
+
+USER: Other License                                  G220831|0002CS-GEN
+      Argonne National Labs, MCS Department                      DCE254
+
+
+**** FILE SUMMARY
+
+Input      C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_25sites.gms
+Output     C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\_gams_py_gjo0.lst
