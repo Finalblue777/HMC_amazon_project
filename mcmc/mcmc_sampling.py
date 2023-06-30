@@ -33,6 +33,8 @@ except(ImportError):
 import time
 import re
 
+import multiprocess
+from concurrent.futures import ProcessPoolExecutor
 
 ## Module-level variables
 _DEBUG = False
@@ -132,12 +134,29 @@ class Sampler(_ABC):
         return self._CONFIGURATIONS.copy()
 
 
+class FDGradient(object):
+    def __init__(self, func, x, fd_eps=1e-5):
+        """Create a gradient object"""
+        self.x      = np.asarray(x, dtype=float).flatten()
+        self.e      = np.zeros_like(self.x)
+        self.func   = lambda x: float(func(x))
+        self.fd_eps = fd_eps
+
+    def __call__(self, i):
+        """Evaluate and return ith entry of the gradient"""
+        self.e[...] = 0
+        self.e[i]   = self.fd_eps
+        fd = float(self.func(self.x+self.e) - self.func(self.x)) / self.fd_eps
+        return fd
+
+
 class HMCSampler(Sampler):
     # A dictionary holding default configurations
     _DEF_CONFIGURATIONS = {
         'size':None,
         'log_density':None,
         'log_density_grad':None,
+        'parallel_fd_grad':False,
         'random_seed':123,
         'burn_in':500,
         'mix_in':10,
@@ -145,6 +164,7 @@ class HMCSampler(Sampler):
         'symplectic_integrator_stepsize':1e-2,
         'symplectic_integrator_num_steps':20,
         'mass_matrix':1,
+        'constraint_test':None,
     }
 
     def __init__(self, configs=_DEF_CONFIGURATIONS):
@@ -158,6 +178,8 @@ class HMCSampler(Sampler):
             - 'log_density_grad': (callable) the gradient of the `log_density` function passed.
                 If None, an attempt will be made to used automatic differentiation
                 (if available), otherwise finite differences (FD) will be utilized
+            - parallel_fd_grad: if `True` evaluate the FD gradient in parallel (if FD is used,
+                that is when log_density_grad is not passed)
             - random_seed: random seed used when the object is initiated to keep track of random samples
               This is useful for reproductivity.
               If `None`, random seed follows `numpy.random.seed` rules
@@ -175,6 +197,7 @@ class HMCSampler(Sampler):
                 over the Hamiltonian trajectory
             'mass_matrix': (nonzero scalar or SPD array of size `size x size`)  mass matrix
                 to be used to adjust sampling the auxilliary Gaussian momentum
+            'constraint_test': a function that returns a boolean value `True` if sample point satisfy any constrints, and `False` otherwise
 
         :remarks:
             - Validation of the configurations dictionary is taken care of in the super class
@@ -335,8 +358,47 @@ class HMCSampler(Sampler):
         # Mass matrix square root (lower Cholesky factor for sampling)
         self._MASS_MATRIX_SQRT = self.__factorize_spsd_matrix(self._MASS_MATRIX)
 
+    def __parallel_func_grad(self, x, processes=multiprocess.cpu_count(), ):
+        """Evaluate the """
+        func = self._LOG_DENSITY
+        evaluator = FDGradient(func=func, x=x,)
+        with multiprocess.Pool(processes) as pool:
+            grad = pool.map(evaluator, range(len(x)))
+            return np.asarray(grad)
 
-    def __create_func_grad(self, func, size, approach='fd'):
+    def __threaded_func_grad(self, x, processes=multiprocess.cpu_count(), ):
+        """Evaluate the """
+        func = self._LOG_DENSITY
+        evaluator = FDGradient(func=func, x=x,)
+        with ProcessPoolExecutor() as executor:
+            print("Evaluating Gradient")
+            grad = np.asarray([v for v in executor.map(evaluator, range(len(x)))])
+            print("Done.")
+            return grad
+
+    def __fd_grad_entry(self, x, i):
+        e = np.zeros_like(x)
+        e[i] = fd_eps
+
+        grad_i = (func(x+e) - func(x)) / fd_eps
+        return grad_i
+    def __create_threaded_func_grad(self, processes=multiprocess.cpu_count(), ):
+        """Evaluate the """
+
+
+        def func_grad(x, fd_eps=1e-5, ):
+            """Function to generate gradient using finite differences"""
+            x    = np.asarray(x).flatten()
+            xl = [x for _ in range(x.size)]
+
+            with ProcessPoolExecutor(processes) as executor:
+                print("Threads; Evaluating Gradient")
+                grad = np.asarray([v for v in executor.map(self.__fd_grad_entry, zip(xl, range(x.size)))])
+                print("Done")
+        return func_grad
+
+
+    def __create_func_grad(self, func, size, approach='fd', fd_eps=1e-5, fd_central=False):
         """
         Given a callable/function `func`, create a function that evaluates the gradient of this function
         :param int size: the domain size which determines the size of the returned gradient
@@ -346,7 +408,7 @@ class HMCSampler(Sampler):
             the current platform, otherwise finite differences 'fd' is used
         """
         if re.match(r"\A(f(-|_| )*d|finite(-|_| )*difference(s)*)\Z", approach, re.IGNORECASE):
-            def func_grad(x, fd_eps=1e-7, fd_central=False):
+            def func_grad(x, fd_eps=fd_eps, fd_central=fd_central):
                 """Function to generate gradient using finite differences"""
                 x    = np.asarray(x).flatten()
                 grad = np.zeros_like(x)
@@ -393,11 +455,55 @@ class HMCSampler(Sampler):
         except:
             print(f"Failed to evaluate the log-density using a randomly generated vector")
             raise TypeError
+        # Associate to self
+        self._LOG_DENSITY = log_density
 
         # Log-Density gradient
         log_density_grad = self._CONFIGURATIONS['log_density_grad']
         if log_density_grad is None:
-            log_density_grad = self.__create_func_grad(log_density, size=size)
+            log_density_grad_serial   = self.__create_func_grad(log_density, size=size)
+            log_density_grad_parallel = lambda x: self.__parallel_func_grad(x, processes=min(size, multiprocess.cpu_count()))
+            log_density_grad_threaded = lambda x: self.__threaded_func_grad(x, processes=min(size, multiprocess.cpu_count()))
+            # log_density_grad = self.__create_threaded_func_grad(processes=min(size, multiprocess.cpu_count()))
+
+            # Test serial gradient
+            test_vec = np.random.randn(size)
+
+            # Test Serial vs. Paralle gradient timing; TODO: Maybe remove after debugging
+            try:
+                start_time = time.time()
+                _ = log_density_grad_parallel(test_vec)
+                print(f"Parallel gradient took: {time.time()-start_time} seconds")
+                parallel_failed = False
+            except:
+                print("Failed to use Parallel Gradient")
+                parallel_failed = True
+
+            try:
+                start_time = time.time()
+                _ = log_density_grad_threaded(test_vec)
+                print(f"Threaded gradient took: {time.time()-start_time} seconds")
+                threaded_failed = False
+            except:
+                print("Failed to use Parallel Gradient")
+                threaded_failed = True
+
+            # Test Serial Gradient timing
+            start_time = time.time()
+            grad = log_density_grad_serial(test_vec)
+            print(f"Serial gradient took: {time.time()-start_time} seconds")
+
+            #
+            if self._CONFIGURATIONS['parallel_fd_grad']:
+                if not parallel_failed:
+                    log_density_grad = log_density_grad_parallel
+                elif not threaded_failed:
+                    log_density_grad = log_density_grad_threaded
+                else:
+                    print("Neither The Prallel Nor the Threaded gradient could be executed; resorting to serial gradient ")
+                log_density_grad = log_density_grad_serial
+            else:
+                log_density_grad = log_density_grad_serial
 
         elif not callable(log_density_grad):
             print(f"The 'log_density_grad' found in the configurations is not a valid callable/function!")
@@ -406,12 +512,15 @@ class HMCSampler(Sampler):
         try:
             test_vec = np.random.randn(size)
             grad = log_density_grad(test_vec)
-            assert grad.size == test_vec.size, ""
+            if grad.size != test_vec.size:
+                print("The log density function returns gradient of wront shape")
+                print("Expected gradient of size {test_vec.size}")
+                print("Received gradient of size {grad.size}")
+                raise AssertionError
         except:
             print(f"Failed to evaluate the log-density using a randomly generated vector")
             raise TypeError
-
-        self._LOG_DENSITY = log_density
+        # Associate to self
         self._LOG_DENSITY_GRAD = log_density_grad
 
     def validate_configurations(self, configs, raise_for_invalid=True):
@@ -483,6 +592,16 @@ class HMCSampler(Sampler):
                 is_valid = False
                 return is_valid
 
+        # Test constraint function (if provided)
+        constraint_test = aggr_configs['constraint_test']
+        if callable(constraint_test):
+            try:
+                assert constraint_test(np.random.rand(size)) in [False, True], "Constraint test must report True/False!"
+            except:
+                print("The constraint test didn't work as expected!")
+                raise
+        else:
+            assert constraint_test is None, "`constraint_test` must be either a callable of None!"
 
         ## Mass matrix (covariance of the momentum)
         mass_matrix = aggr_configs['mass_matrix']
@@ -530,8 +649,23 @@ class HMCSampler(Sampler):
         Generate and return a sample of size `sample_size`.
         This method returns a list with each entry representing a sample point from the underlying distribution
         """
-        hmc_results = self.start_HMC_sampling(sample_size=sample_size, verbose=verbose, initial_state=initial_state, )
+        hmc_results = self.start_MCMC_sampling(sample_size=sample_size, verbose=verbose, initial_state=initial_state, )
         return hmc_results['collected_ensemble']
+
+    def map_estimate(self, sample_size=100, initial_state=None, verbose=False, ):
+        """
+        Search for a MAP (maximum aposteriori) estimate by sampling (space exploration)
+            This method returns a single-point estimate of the MAP of the distribution
+        :param int sample_size:
+        :param initial_state:
+        :param bool verbose:
+        """
+        hmc_results = self.start_MCMC_sampling(sample_size=sample_size,
+                                               initial_state=initial_state,
+                                               full_diagnostics=full_diagnostics,
+                                               verbose=verbose,
+                                               )
+        return hmc_results['map_estimate']
 
     def generate_white_noise(self, size, truncate=True):
         """
@@ -598,7 +732,12 @@ class HMCSampler(Sampler):
         Evaluate the value of the logarithm of the target unscaled posterior density function
         """
         val = self._LOG_DENSITY(state)
-        if isinstance(val, np.ndarray) and val.size == 1: val = val[0]
+        try:
+            val[0]
+            val = np.asarray(val).flatten()[0]
+        except:
+            pass
+        # if isinstance(val, np.ndarray) and val.size == 1: val = val.flatten()[0]
         return val
 
     def log_density_grad(self, state):
@@ -619,7 +758,7 @@ class HMCSampler(Sampler):
                 print(f"Received State:\n {repr(state)}")
             # raise ValueError
             return np.nan
-        return -self.log_density(state)
+        return - self.log_density(state)
 
     def potential_energy_grad(self, state, verbose=False):
         """
@@ -633,7 +772,7 @@ class HMCSampler(Sampler):
                 print(f"Received State:\n {repr(state)}")
             # raise ValueError
             return np.nan
-        return -self.log_density_grad(state)
+        return - self.log_density_grad(state)
 
     def kinetic_energy(self, momentum):
         """
@@ -751,10 +890,12 @@ class HMCSampler(Sampler):
 
                 # Update state
                 proposed_state = current_state + (0.5*h) * self.mass_matrix_inv_matvec(current_momentum)
+                # print("1: proposed state", proposed_state)
 
                 # Update momentum
                 grad = self.potential_energy_grad(proposed_state)
                 proposed_momentum = current_momentum - h * grad
+                # print("<: proposed momentum", proposed_momentum)
 
                 # Update state again
                 proposed_state += (0.5*h) * self.mass_matrix_inv_matvec(proposed_momentum)
@@ -809,7 +950,8 @@ class HMCSampler(Sampler):
         return (proposed_momentum, proposed_state)
 
 
-    def start_HMC_sampling(self, sample_size, initial_state=None, randomize_step_size=False, verbose=False,):
+    def start_MCMC_sampling(self, sample_size, initial_state=None, randomize_step_size=False,
+                           full_diagnostics=False, verbose=False, ):
         """
         Start the HMC sampling procedure with initial state as passed.
         Use the underlying configurations for configuring the Hamiltonian trajectory, burn-in and mixin settings.
@@ -819,6 +961,8 @@ class HMCSampler(Sampler):
             will result in faster convergence). You can try prior mean if this is used in a Bayesian approach
         :param bool randomize_step_size: if `True` a tiny random number is added to the passed step
             size to help improve space exploration
+        :param bool full_diagnostics: if `True` all generated states will be tracked and kept for full disgnostics, otherwise,
+            only collected samples are kept in memory
         :param bool verbose: screen verbosity
         """
 
@@ -829,6 +973,7 @@ class HMCSampler(Sampler):
         symplectic_integrator = self._CONFIGURATIONS['symplectic_integrator']
         hamiltonian_step_size = self._CONFIGURATIONS['symplectic_integrator_stepsize']
         hamiltonian_num_steps = self._CONFIGURATIONS['symplectic_integrator_num_steps']
+        constraint_test       = self._CONFIGURATIONS['constraint_test']
 
         liner, sliner = '=' * 53, '-' * 40
         if verbose:
@@ -852,11 +997,14 @@ class HMCSampler(Sampler):
         current_state = initial_state.copy()  # initial state = ensemble mean
 
         # All generated sample points will be kept for testing and efficiency analysis
-        chain_state_repository   = [initial_state]
-        proposals_repository     = []
-        acceptance_flags         = []
-        acceptance_probabilities = []
-        uniform_random_numbers   = []
+        chain_state_repository    = [initial_state]
+        proposals_repository      = []
+        acceptance_flags          = []
+        acceptance_probabilities  = []
+        uniform_random_numbers    = []
+        collected_ensemble        = []
+        map_estimate             = None
+        map_estimate_log_density = -np.infty
 
         # Build the Markov chain
         start_time = time.time()  # start timing
@@ -877,22 +1025,40 @@ class HMCSampler(Sampler):
                 symplectic_integrator=symplectic_integrator,
             )
 
+            # print("proposed_momentum, proposed_state", proposed_momentum, proposed_state)
+
             ## MH step (Accept/Reject) proposed (momentum, state)
             # Calculate acceptance proabability
             # Total energy (Hamiltonian) of the extended pair (proposed_momentum,
             # Here, we evaluate the kernel of the posterior at both the current and the proposed state proposed_state)
             current_energy  = self.total_Hamiltonian(momentum=current_momentum, state=current_state)
-            proposal_energy = self.total_Hamiltonian(momentum=proposed_momentum, state=proposed_state)
-            energy_loss = proposal_energy - current_energy
-            _loss_thresh = 1000
-            if False and abs(energy_loss) >= _loss_thresh:  # this should avoid overflow errors
-                if energy_loss < 0:
-                    sign = -1
-                else:
-                    sign = 1
-                energy_loss = sign * _loss_thresh
-            acceptance_probability = np.exp(-energy_loss)
-            acceptance_probability = min(acceptance_probability, 1.0)
+            constraint_violated = False
+            if constraint_test is not None:
+                if not constraint_test(proposed_state): constraint_violated = True
+
+            if constraint_violated:
+                acceptance_probability = 0
+
+            else:
+                proposal_kinetic_energy   = self.kinetic_energy(proposed_momentum)
+                proposal_potential_energy = self.potential_energy(proposed_state)
+                proposal_energy           = proposal_kinetic_energy + proposal_potential_energy
+
+                energy_loss = proposal_energy - current_energy
+                _loss_thresh = 1000
+                if abs(energy_loss) >= _loss_thresh:  # this should avoid overflow errors
+                    if energy_loss < 0:
+                        sign = -1
+                    else:
+                        sign = 1
+                    energy_loss = sign * _loss_thresh
+                acceptance_probability = np.exp(-energy_loss)
+                acceptance_probability = min(acceptance_probability, 1.0)
+
+                # Update Mode (Map Point Estimate)
+                if - proposal_potential_energy > map_estimate_log_density:
+                    map_estimate             = proposed_state.copy()
+                    map_estimate_log_density = - proposal_potential_energy
 
             # a uniform random number between 0 and 1
             np_state = np.random.get_state()
@@ -903,43 +1069,48 @@ class HMCSampler(Sampler):
 
             # MH-rule
             if acceptance_probability > uniform_probability:
+                current_state   = proposed_state
                 accept_proposal = True
             else:
                 accept_proposal = False
 
             if verbose:
-                print("\rHMC Iteration [{0:4d}/{1:4d}]; Acceptance Probability: {2}; --> Accepted? {3}".format(chain_ind+1, chain_length, acceptance_probability, accept_proposal), end=" ")
+                print(f"\rHMC Iteration [{chain_ind+1:4d}/{chain_length:4d}]; Accept Prob: {acceptance_probability:3.2f}; --> Accepted? {accept_proposal}", end="  ")
+
+            #
+            if chain_ind >= burn_in_steps and chain_ind % mixing_steps==0:
+                collected_ensemble.append(current_state.copy())
 
             # Update Results Repositories:
-            proposals_repository.append(proposed_state)
-            acceptance_probabilities.append(acceptance_probability)
-            uniform_random_numbers.append(uniform_probability)
-            #
-            if accept_proposal:
-                acceptance_flags.append(1)
-                current_state = proposed_state
-            else:
-                acceptance_flags.append(0)
-            chain_state_repository.append(np.squeeze(current_state))
+            if full_diagnostics:
+                proposals_repository.append(proposed_state)
+                acceptance_probabilities.append(acceptance_probability)
+                uniform_random_numbers.append(uniform_probability)
+                #
+                if accept_proposal:
+                    acceptance_flags.append(1)
+                else:
+                    acceptance_flags.append(0)
+                chain_state_repository.append(np.squeeze(current_state))
 
         # Stop timing
         chain_time = time.time() - start_time
 
-        # TODO: We should not keep track of every generated state; this will be memory intensive.
-        # TODO: One everything is validated, move this into the loop to dicard states
-        # brune, and mix:
-        collected_ensemble = [chain_state_repository[ind] for ind in range(burn_in_steps, len(chain_state_repository) ,mixing_steps)]
         # ------------------------------------------------------------------------------------------------
 
         # Now output diagnostics and show some plots :)
-        chain_diagnostics = self._mcmc_chain_diagnostic_statistics(
-            proposals_repository=proposals_repository,
-            chain_state_repository=chain_state_repository,
-            collected_ensemble=collected_ensemble,
-            acceptance_probabilities=acceptance_probabilities,
-            uniform_probabilities=uniform_random_numbers,
-            acceptance_flags=acceptance_flags,
-        )
+        if full_diagnostics:
+            chain_diagnostics = self.mcmc_chain_diagnostic_statistics(
+                proposals_repository=proposals_repository,
+                chain_state_repository=chain_state_repository,
+                collected_ensemble=collected_ensemble,
+                acceptance_probabilities=acceptance_probabilities,
+                uniform_probabilities=uniform_random_numbers,
+                acceptance_flags=acceptance_flags,
+                map_estimate=map_estimate,
+            )
+        else:
+            chain_diagnostics = None
 
         #
         # ======================================================================================================== #
@@ -949,7 +1120,8 @@ class HMCSampler(Sampler):
         if verbose:
             print("MCMC sampler:")
             print(f"Time Elapsed for MCMC sampling: {chain_time} seconds")
-            print(f"Acceptance Rate: {chain_diagnostics['acceptance_rate']:.2f}")
+            if chain_diagnostics is not None:
+                print(f"Acceptance Rate: {chain_diagnostics['acceptance_rate']:.2f}")
 
         sampling_results = dict(
             chain_state_repository=chain_state_repository,
@@ -959,6 +1131,8 @@ class HMCSampler(Sampler):
             acceptance_probabilities=acceptance_probabilities,
             uniform_random_numbers=uniform_random_numbers,
             chain_diagnostics=chain_diagnostics,
+            map_estimate=map_estimate,
+            map_estimate_log_density=map_estimate_log_density,
             chain_time=chain_time,
         )
         return sampling_results
@@ -1020,6 +1194,7 @@ def create_hmc_sampler(size,
                        symplectic_integrator_stepsize=1e-2,
                        symplectic_integrator_num_steps=20,
                        mass_matrix=1e-1,
+                       constraint_test=None,
                        ):
     """
     Given the size of the target space, and a function to evalute log density,
@@ -1038,8 +1213,13 @@ def create_hmc_sampler(size,
         symplectic_integrator_stepsize=symplectic_integrator_stepsize,
         symplectic_integrator_num_steps=symplectic_integrator_num_steps,
         mass_matrix=mass_matrix,
+        constraint_test=constraint_test,
     )
     return HMCSampler(configs)
 
+
+if __name__ == "__main__":
+    # This must exist for multiprocessing to work
+    pass
 
 
