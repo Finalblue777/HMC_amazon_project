@@ -463,27 +463,47 @@ class HMCSampler(Sampler):
         if log_density_grad is None:
             log_density_grad_serial   = self.__create_func_grad(log_density, size=size)
             log_density_grad_parallel = lambda x: self.__parallel_func_grad(x, processes=min(size, multiprocess.cpu_count()))
-            # log_density_grad = lambda x: self.__threaded_func_grad(x, processes=min(size, multiprocess.cpu_count()))
+            log_density_grad_threaded = lambda x: self.__threaded_func_grad(x, processes=min(size, multiprocess.cpu_count()))
             # log_density_grad = self.__create_threaded_func_grad(processes=min(size, multiprocess.cpu_count()))
 
             # Test serial gradient
             test_vec = np.random.randn(size)
 
-            start_time = time.time()
-            grad = log_density_grad_parallel(test_vec)
-            # TODO: Remove after debugging
-            print(f"Parallel gradient took: {time.time()-start_time} seconds")
+            # Test Serial vs. Paralle gradient timing; TODO: Maybe remove after debugging
+            try:
+                start_time = time.time()
+                _ = log_density_grad_parallel(test_vec)
+                print(f"Parallel gradient took: {time.time()-start_time} seconds")
+                parallel_failed = False
+            except:
+                print("Failed to use Parallel Gradient")
+                parallel_failed = True
 
+            try:
+                start_time = time.time()
+                _ = log_density_grad_threaded(test_vec)
+                print(f"Threaded gradient took: {time.time()-start_time} seconds")
+                threaded_failed = False
+            except:
+                print("Failed to use Parallel Gradient")
+                threaded_failed = True
+
+            # Test Serial Gradient timing
             start_time = time.time()
             grad = log_density_grad_serial(test_vec)
-            # TODO: Remove after debugging
             print(f"Serial gradient took: {time.time()-start_time} seconds")
+
             #
             if self._CONFIGURATIONS['parallel_fd_grad']:
-                log_density_grad = log_density_grad_parallel
+                if not parallel_failed:
+                    log_density_grad = log_density_grad_parallel
+                elif not threaded_failed:
+                    log_density_grad = log_density_grad_threaded
+                else:
+                    print("Neither The Prallel Nor the Threaded gradient could be executed; resorting to serial gradient ")
+                log_density_grad = log_density_grad_serial
             else:
                 log_density_grad = log_density_grad_serial
-
 
         elif not callable(log_density_grad):
             print(f"The 'log_density_grad' found in the configurations is not a valid callable/function!")
