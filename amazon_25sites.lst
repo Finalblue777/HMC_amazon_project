@@ -1,4 +1,4 @@
-GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/30/23 00:35:09 Page 1
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/29/23 13:11:04 Page 1
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 C o m p i l a t i o n
 
@@ -14,7 +14,7 @@ C o m p i l a t i o n
    9   
   10  parameter x0(R) ;
   11   
-GDXIN   c:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\X0Data.gdx
+GDXIN   C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\X0Data.gdx
 --- LOAD  x0 = 1:x0
   16   
   17  display x0;
@@ -78,7 +78,7 @@ GDXIN   c:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\X0Data.gdx
   75   
   76   
   77  parameter gamma(R);
-GDXIN   c:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\GammaData.gdx
+GDXIN   C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\GammaData.gdx
 --- LOAD  gamma = 1:gamma
   82  display gamma;
   83   
@@ -227,22 +227,22 @@ GDXIN   c:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\GammaData.gdx
  226  );
  227  putclose;
  228   
-GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/30/23 00:35:09 Page 2
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/29/23 13:11:04 Page 2
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 Include File Summary
 
 
    SEQ   GLOBAL TYPE      PARENT   LOCAL  FILENAME
 
-     1        1 INPUT          0       0  c:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_25sites.gms
+     1        1 INPUT          0       0  C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_25sites.gms
      2       12 CALL           1      12  csv2gdx X0Data.csv id=x0  index=1 values=2..lastCol useHeader=y trace=0
-     3       13 GDXIN          1      13  c:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\X0Data.gdx
+     3       13 GDXIN          1      13  C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\X0Data.gdx
      4       78 CALL           1      78  csv2gdx GammaData.csv id=gamma  index=1 values=2..lastCol useHeader=y trace=0
-     5       79 GDXIN          1      79  c:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\GammaData.gdx
+     5       79 GDXIN          1      79  C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\GammaData.gdx
 
 
 COMPILATION TIME     =        0.031 SECONDS      3 MB  43.4.1 3da5975b WEX-WEI
-GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/30/23 00:35:09 Page 3
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/29/23 13:11:04 Page 3
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 E x e c u t i o n
 
@@ -265,7 +265,18 @@ E x e c u t i o n
 
 **** PUT ERROR FOR FILE regionresults_z AT LINE 165: File attribute argument too large, reset to 32767
 
-GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/30/23 00:35:09 Page 4
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/29/23 13:11:04 Page 4
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Range Statistics    SOLVE amazon Using QCP From line 174
+
+
+RANGE STATISTICS (ABSOLUTE NON-ZERO FINITE VALUES)
+
+RHS       [min, max] : [ 1.822E+01, 7.658E+02] - Zero values observed as well
+Bound     [min, max] : [ 5.771E-04, 1.793E+04] - Zero values observed as well
+Matrix    [min, max] : [ 7.836E-03, 8.063E+02] - Zero values observed as well
+
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/29/23 13:11:04 Page 5
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 Model Statistics    SOLVE amazon Using QCP From line 174
 
@@ -278,8 +289,8 @@ NON ZERO ELEMENTS        60,026     NON LINEAR N-Z            200
 CODE LENGTH               1,003     CONSTANT POOL             216
 
 
-GENERATION TIME      =        0.016 SECONDS     10 MB  43.4.1 3da5975b WEX-WEI
-GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/30/23 00:35:09 Page 5
+GENERATION TIME      =        0.015 SECONDS     10 MB  43.4.1 3da5975b WEX-WEI
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/29/23 13:11:04 Page 6
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 Solution Report     SOLVE amazon Using QCP From line 174
 
@@ -294,7 +305,7 @@ Solution Report     SOLVE amazon Using QCP From line 174
 **** MODEL STATUS      1 Optimal
 **** OBJECTIVE VALUE           133804.1885
 
- RESOURCE USAGE, LIMIT          0.063 10000000000.000
+ RESOURCE USAGE, LIMIT          0.047 10000000000.000
  ITERATION COUNT, LIMIT         0    2147483647
  EVALUATION ERRORS             NA             0
 --- GAMS/CPLEX licensed for continuous and discrete problems.
@@ -309,7 +320,7 @@ Solution Report     SOLVE amazon Using QCP From line 174
 
 
 --- QP status (1): optimal.
---- Cplex Time: 0.06sec (det. 200.09 ticks)
+--- Cplex Time: 0.05sec (det. 200.09 ticks)
 
 
 Optimal solution found
@@ -321,7 +332,7 @@ Objective:       133804.188472
                              0 INFEASIBLE
                              0  UNBOUNDED
                              0     ERRORS
-GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/30/23 00:35:09 Page 6
+GAMS 43.4.1  3da5975b Jun 22, 2023          WEX-WEI x86 64bit/MS Windows - 06/29/23 13:11:04 Page 7
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 E x e c u t i o n
 
@@ -344,5 +355,5 @@ USER: Other License                                  G220831|0002CS-GEN
 
 **** FILE SUMMARY
 
-Input      c:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_25sites.gms
-Output     c:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\_gams_py_gjo0.lst
+Input      C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_25sites.gms
+Output     C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_25sites.lst

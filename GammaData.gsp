@@ -1,4 +1,5 @@
 {
+    "expand": false,
     "name": "GammaData",
     "nodes": [
         {
