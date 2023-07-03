@@ -213,7 +213,7 @@ def main(
             sol_val_X = np.concatenate((dfz_np.T, dfx_np.T))
         elif two_param_uncertainty == True:
             # Update x0
-            x0_vals = gamma_vals * forestArea_2017_ha
+            x0_vals = uncertain_vals[size:] * forestArea_2017_ha
 
             x0data = pd.DataFrame(x0_vals)
             x0data.to_csv('X0Data.csv')
