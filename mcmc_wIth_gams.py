@@ -8,7 +8,7 @@ import pickle
 import time
 
 import casadi
-
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -43,7 +43,7 @@ else:  # new API structure
 
 def main(
     # Configurations/Settings
-    site_num          = 100,  # Number of sites(10, 25, 100, 1000)
+    site_num          = 25,  # Number of sites(10, 25, 100, 1000)
     norm_fac          = 1e9,
     delta_t           = 0.02,
     alpha             = 0.045007414,
@@ -92,7 +92,12 @@ def main(
     theta_vals  = theta
     
     
+    # time step!
+    dt = T / N
 
+    # Other placeholders!
+    ds_vect = np.exp(- delta_t * np.arange(N+1) * dt)
+    ds_vect = np.reshape(ds_vect, (ds_vect.size, 1))
 
 
     # Retrieve z data for selected site(s)
@@ -175,7 +180,7 @@ def main(
         if two_param_uncertainty == False:
 
             # Update x0
-            x0_vals = gamma_vals * forestArea_2017_ha
+            x0_vals = uncertain_vals * forestArea_2017_ha
 
             x0data = pd.DataFrame(x0_vals)
             x0data.to_csv('X0Data.csv')
@@ -186,7 +191,8 @@ def main(
 
             cwd = os.getcwd() # get current working directory
 
-            ws = GamsWorkspace(system_directory=r"C:\GAMS\43", working_directory=cwd)
+            ws = GamsWorkspace(system_directory=r"/Library/Frameworks/GAMS.framework/Versions/43/Resources", working_directory=cwd)
+            print(f"amazon_{size}sites.gms")
             t1 = ws.add_job_from_file(f"amazon_{size}sites.gms")
             t1.run()
             dfu = pd.read_csv('amazon_data_u.dat', delimiter='\t')
@@ -227,7 +233,7 @@ def main(
 
             cwd = os.getcwd() # get current working directory
 
-            ws = GamsWorkspace(system_directory=r"C:\GAMS\43", working_directory=cwd)
+            ws = GamsWorkspace(system_directory=r"/Library/Frameworks/GAMS.framework/Versions/43/Resources", working_directory=cwd)
             t1 = ws.add_job_from_file(f"amazon_{size}sites_2_param.gms")
             t1.run()
             dfu = pd.read_csv('amazon_data_u.dat', delimiter='\t')
@@ -263,8 +269,8 @@ def main(
                                                              N=N,
                                                              # sol=sol,
                                                              sol_val_X=sol_val_X,
-                                                             sol_val_Ua=sol_val_Ua,
-                                                             sol_val_Up=sol_val_Up,
+                                                             sol_val_Ua=sol_val_Ua[0:-1].T,
+                                                             sol_val_Up=sol_val_Up[0:-1].T,
                                                              zbar_2017=zbar_2017,
                                                              forestArea_2017_ha=forestArea_2017_ha,
                                                              norm_fac=norm_fac,

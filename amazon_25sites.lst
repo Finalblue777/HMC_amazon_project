@@ -1,4 +1,4 @@
-GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:52:56 Page 1
+GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:44:33 Page 1
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 C o m p i l a t i o n
 
@@ -154,12 +154,12 @@ GDXIN   /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/GammaData.gdx
  153   
  154  model amazon / all /;
  155   
- 156  file results_x / "amazon_data_x.dat" /;
- 157  file results_w / "amazon_data_w.dat" /;
+ 156  file results_x / "C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_data_x.dat" /;
+ 157  file results_w / "C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_data_w.dat" /;
  158   
- 159  file regionresults_z / "amazon_data_z.dat" /;
- 160  file regionresults_u / "amazon_data_u.dat" /;
- 161  file regionresults_v / "amazon_data_v.dat" /;
+ 159  file regionresults_z / "C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_data_z.dat" /;
+ 160  file regionresults_u / "C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_data_u.dat" /;
+ 161  file regionresults_v / "C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_data_v.dat" /;
  162   
  163  regionresults_u.pw = 163840000;
  164  regionresults_v.pw = 163840000;
@@ -227,7 +227,7 @@ GDXIN   /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/GammaData.gdx
  226  );
  227  putclose;
  228   
-GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:52:56 Page 2
+GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:44:33 Page 2
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 Include File Summary
 
@@ -241,8 +241,8 @@ Include File Summary
      5       79 GDXIN          1      79  /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/GammaData.gdx
 
 
-COMPILATION TIME     =        0.058 SECONDS      3 MB  43.4.1 3da5975b DEX-DEG
-GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:52:56 Page 3
+COMPILATION TIME     =        0.054 SECONDS      3 MB  43.4.1 3da5975b DEX-DEG
+GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:44:33 Page 3
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 E x e c u t i o n
 
@@ -265,7 +265,18 @@ E x e c u t i o n
 
 **** PUT ERROR FOR FILE regionresults_z AT LINE 165: File attribute argument too large, reset to 32767
 
-GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:52:56 Page 4
+GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:44:33 Page 4
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+Range Statistics    SOLVE amazon Using QCP From line 174
+
+
+RANGE STATISTICS (ABSOLUTE NON-ZERO FINITE VALUES)
+
+RHS       [min, max] : [ 1.822E+01, 7.658E+02] - Zero values observed as well
+Bound     [min, max] : [ 5.771E-04, 1.793E+04] - Zero values observed as well
+Matrix    [min, max] : [ 7.836E-03, 8.063E+02] - Zero values observed as well
+
+GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:44:33 Page 5
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 Model Statistics    SOLVE amazon Using QCP From line 174
 
@@ -278,8 +289,8 @@ NON ZERO ELEMENTS        60,026     NON LINEAR N-Z            200
 CODE LENGTH               1,003     CONSTANT POOL             216
 
 
-GENERATION TIME      =        0.036 SECONDS     10 MB  43.4.1 3da5975b DEX-DEG
-GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:52:56 Page 5
+GENERATION TIME      =        0.127 SECONDS     10 MB  43.4.1 3da5975b DEX-DEG
+GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:44:33 Page 6
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 Solution Report     SOLVE amazon Using QCP From line 174
 
@@ -294,7 +305,7 @@ Solution Report     SOLVE amazon Using QCP From line 174
 **** MODEL STATUS      1 Optimal
 **** OBJECTIVE VALUE           133804.1885
 
- RESOURCE USAGE, LIMIT          0.147 10000000000.000
+ RESOURCE USAGE, LIMIT          0.136 10000000000.000
  ITERATION COUNT, LIMIT         0    2147483647
  EVALUATION ERRORS             NA             0
 --- GAMS/CPLEX licensed for continuous and discrete problems.
@@ -309,7 +320,7 @@ Solution Report     SOLVE amazon Using QCP From line 174
 
 
 --- QP status (1): optimal.
---- Cplex Time: 0.15sec (det. 200.09 ticks)
+--- Cplex Time: 0.14sec (det. 200.09 ticks)
 
 
 Optimal solution found
@@ -321,21 +332,21 @@ Objective:       133804.188472
                              0 INFEASIBLE
                              0  UNBOUNDED
                              0     ERRORS
-GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:52:56 Page 6
+GAMS 43.4.1  3da5975b Jun 22, 2023          DEX-DEG x86 64bit/macOS - 07/05/23 19:44:33 Page 7
 G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
 E x e c u t i o n
 
 
 **** REPORT FILE SUMMARY
 
-results_x /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/amazon_data_x.dat
-results_w /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/amazon_data_w.dat
-regionresults_z /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/amazon_data_z.dat
-regionresults_u /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/amazon_data_u.dat
-regionresults_v /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/amazon_data_v.dat
+results_x /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_data_x.dat
+results_w /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_data_w.dat
+regionresults_z /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_data_z.dat
+regionresults_u /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_data_u.dat
+regionresults_v /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/C:\Users\Samuel Zhao\Documents\Github\HMC_amazon_project2\amazon_data_v.dat
 
 
-EXECUTION TIME       =        0.311 SECONDS     19 MB  43.4.1 3da5975b DEX-DEG
+EXECUTION TIME       =        0.816 SECONDS     19 MB  43.4.1 3da5975b DEX-DEG
 
 
 USER: Other License                                  G220831|0002CS-GEN
@@ -345,4 +356,4 @@ USER: Other License                                  G220831|0002CS-GEN
 **** FILE SUMMARY
 
 Input      /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/amazon_25sites.gms
-Output     /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/_gams_py_gjo0.lst
+Output     /Users/samuelzhao/Documents/GitHub/HMC_amazon_project/amazon_25sites.lst

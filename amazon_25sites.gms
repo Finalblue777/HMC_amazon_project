@@ -7,33 +7,15 @@ set R ordered /1*25/;
 
 scalar scale / 1.0e6 /;
 
-parameter x0(R) /
-1   427601641.9
-2   2893825773
-3   8294953936
-4   5103976370
-5   7924642856
-6   2155085976
-7   15052247734
-8   12862499767
-9   14699451402
-10  14270015239
-11  5186640337
-12  145894448.8
-13  17292665424
-14  17933194552
-15  14948564283
-16  16493423849
-17  12261035583
-18  1161176040
-19  3461828171
-20  3833685435
-21  7982992100
-22  5615333536
-23  4130250287
-24  241606922.6
-25  329960716
-/;
+parameter x0(R) ;
+
+$call csv2gdx X0Data.csv id=x0  index=1 values=2..lastCol useHeader=y trace=0
+$gdxIn X0Data.gdx
+$load  x0
+$gdxIn
+
+display x0;
+
 
 parameter z0(R) /
 1   577.0929401
@@ -93,10 +75,11 @@ parameter zbar(R) /
 
 
 parameter gamma(R);
-$call csv2gdx "C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project\GammaData.csv" output="C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project\GammaData.gdx" id=dim1 index=1 values=1..lastCol useHeader=y trace=0
-$gdxIn "C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project\GammaData.gdx"
-$load  gamma = dim1
-
+$call csv2gdx GammaData.csv id=gamma  index=1 values=2..lastCol useHeader=y trace=0
+$gdxIn GammaData.gdx
+$load  gamma 
+$gdxIn
+display gamma;
 
 parameter theta(R) /
 1   0.009738465
@@ -137,6 +120,8 @@ parameter dt /1 /;
 
 
 parameter x_agg(T);
+parameter w_agg(T);
+
 parameter z_agg(T);
 parameter u_agg(T);
 parameter v_agg(T);
@@ -168,14 +153,17 @@ obj_def..
     
 model amazon / all /;
 
-file results / "C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project\amazon_data.dat" /;
-file regionresults_u / "C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project\amazon_data_u.dat" /;
-file regionresults_v / "C:\Users\Samuel Zhao\Documents\GitHub\HMC_amazon_project\amazon_data_v.dat" /;
+file results_x / "amazon_data_x.dat" /;
+file results_w / "amazon_data_w.dat" /;
+
+file regionresults_z / "amazon_data_z.dat" /;
+file regionresults_u / "amazon_data_u.dat" /;
+file regionresults_v / "amazon_data_v.dat" /;
 
 regionresults_u.pw = 163840000;
 regionresults_v.pw = 163840000;
-
-x.fx(T,R)$(ord(T) = 1) = x0(R) / scale;	
+regionresults_z.pw = 163840000;
+x.fx(T,R)$(ord(T) = 1) = x0(R) / scale; 
 z.fx(T,R)$(ord(T) = 1) = z0(R) / scale;
 z.up(T,R)$(ord(T) > 1) = zbar(R) / scale ;
 u.fx(T,R)$(ord(T) = card(T)) = 0;
@@ -185,15 +173,33 @@ w.fx(T)$(ord(T) = card(T)) = 0;
 option qcp = cplex;
 solve amazon using qcp maximizing  obj;
 
-x_agg(T) = scale*sum(R, x.l(T,R));
-z_agg(T) = scale*sum(R, z.l(T,R));
-u_agg(T) = scale*sum(R, u.l(T,R));
-v_agg(T) = scale*sum(R, v.l(T,R));
-c_agg(T) = scale*scale*sum(R, u.l(T,R)*v.l(T,R));
+x_agg(T) = sum(R, x.l(T,R));
+w_agg(T) = w.l(T);
+z_agg(T) = sum(R, z.l(T,R));
+u_agg(T) = sum(R, u.l(T,R));
+v_agg(T) = sum(R, v.l(T,R));
+c_agg(T) = sum(R, u.l(T,R)*v.l(T,R));
 
-put results;
-put 'T':4 system.tab 'x_agg':20 system.tab 'z_agg':20/;
-loop(T, put T.tl:4 system.tab x_agg(T):20:16 system.tab z_agg(T):20:16 /);
+put results_w;
+put 'T':4 system.tab 'w_agg':20/;
+loop(T, put T.tl:4 system.tab w_agg(T):20:16 /);
+putclose;
+
+put results_x;
+put 'T':4 system.tab 'x_agg':20/;
+loop(T, put T.tl:4 system.tab x_agg(T):20:16 /);
+putclose;
+
+put regionresults_z;
+put 'T/R':4;
+loop(R, put system.tab R.tl:10);
+put /;
+loop(T,
+  put T.tl:4;
+  loop(R, put system.tab (z.l(T,R)):16:10);
+
+  put /;
+);
 putclose;
 
 put regionresults_u;
@@ -202,7 +208,7 @@ loop(R, put system.tab R.tl:10);
 put /;
 loop(T,
   put T.tl:4;
-  loop(R, put system.tab (scale*u.l(T,R)):16:10);
+  loop(R, put system.tab (u.l(T,R)):16:10);
 
   put /;
 );
@@ -214,7 +220,7 @@ loop(R, put system.tab R.tl:10);
 put /;
 loop(T,
   put T.tl:4;
-  loop(R, put system.tab (scale*v.l(T,R)):16:10);
+  loop(R, put system.tab (v.l(T,R)):16:10);
 
   put /;
 );

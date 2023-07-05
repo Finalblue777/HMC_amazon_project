@@ -19,7 +19,7 @@ from mcmc_sampling import create_hmc_sampler
 from data_handlers import load_site_data
 
 # Local Debugging flag; remove when all tested
-_DEBUG = False
+_DEBUG = True
 
 # ## Define a log density function suitable for MCMC sampling
 #     Note that the log-density is the logarithm of the target density discarding any normalization factor
