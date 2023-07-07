@@ -256,7 +256,7 @@ def solve_with_casadi(
     mode_as_solution  = False,   # If true, use the mode (point of high probability) as solution for gamma
     final_sample_size = 100_00,  # number of samples to collect after convergence
     two_param_uncertainty = False,
-    weight=0.25,     # <-- Not sure how this linear combination weighting helps!
+    weight            = 0.25,     # <-- Not sure how this linear combination weighting helps!
     output_dir='Casadi_Results',
     ):
     """
@@ -575,19 +575,25 @@ def solve_with_casadi(
             mass_matrix=1e+1,
             constraint_test=lambda x: True if np.all(x>=0) else False,
         )
-        gamma_post_samples = sampler.sample(
+
+        # Update to get the mode as well as the sample
+        sampling_results = sampler.start_MCMC_sampling(
             sample_size=sample_size,
             initial_state=uncertain_vals,
             verbose=True,
         )
-        gamma_post_samples = np.asarray(gamma_post_samples)
+        gamma_post_samples = np.asarray(
+            sampling_results['collected_ensemble']
+        )
+        gamma_map_estimate = sampling_results['map_estimate']
+
 
         # Update ensemble/tracker
         collected_ensembles.update({cntr: gamma_post_samples.copy()})
 
         # Update gamma value
         if mode_as_solution:
-            raise NotImplementedError("We will consider this in the future; trace sampled points and keep track of objective values to pick one with highest prob. ")
+            uncertain_vals = weight * gamma_map_estimate + (1-weight) * uncertain_vals_old
 
         else:
             uncertain_vals = weight * np.mean(gamma_post_samples, axis=0 ) + (1-weight) * uncertain_vals_old
@@ -596,7 +602,9 @@ def solve_with_casadi(
         # Evaluate error for convergence check
         error = np.max(np.abs(uncertain_vals_old-uncertain_vals) / uncertain_vals_old)
         error_tracker.append(error)
-        print(f"Iteration [{cntr+1:4d}]: Error = {error}")
+        print(
+            decorate_text(f"Iteration [{cntr+1:4d}]: Error = {error}")
+        )
 
         # Exchange gamma values (for future weighting/update & error evaluation)
         uncertain_vals_old = uncertain_vals
@@ -666,7 +674,7 @@ def solve_with_gams(
     mode_as_solution  = False,   # If true, use the mode (point of high probability) as solution for gamma
     final_sample_size = 100_00,  # number of samples to collect after convergence
     two_param_uncertainty = False,
-    weight=0.25,     # <-- Not sure how this linear combination weighting helps!
+    weight            = 0.25,     # <-- Not sure how this linear combination weighting helps!
     output_dir='GAMS_Results',
     ):
     """
@@ -945,20 +953,24 @@ def solve_with_gams(
             mass_matrix=1e+1,
             constraint_test=lambda x: True if np.all(x>=0) else False,
         )
-        gamma_post_samples = sampler.sample(
+
+        # Update to get the mode as well as the sample
+        sampling_results = sampler.start_MCMC_sampling(
             sample_size=sample_size,
             initial_state=uncertain_vals,
             verbose=True,
         )
-        gamma_post_samples = np.asarray(gamma_post_samples)
+        gamma_post_samples = np.asarray(
+            sampling_results['collected_ensemble']
+        )
+        gamma_map_estimate = sampling_results['map_estimate']
 
         # Update ensemble/tracker
         collected_ensembles.update({cntr: gamma_post_samples.copy()})
 
         # Update gamma value
-        weight     = 0.25  # <-- Not sure how this linear combination weighting helps!
         if mode_as_solution:
-            raise NotImplementedError("We will consider this in the future; trace sampled points and keep track of objective values to pick one with highest prob. ")
+            uncertain_vals = weight * gamma_map_estimate + (1-weight) * uncertain_vals_old
 
         else:
             uncertain_vals = weight * np.mean(gamma_post_samples, axis=0 ) + (1-weight) * uncertain_vals_old
@@ -967,7 +979,9 @@ def solve_with_gams(
         # Evaluate error for convergence check
         error = np.max(np.abs(uncertain_vals_old-uncertain_vals) / uncertain_vals_old)
         error_tracker.append(error)
-        print(f"Iteration [{cntr+1:4d}]: Error = {error}")
+        print(
+            decorate_text(f"Iteration [{cntr+1:4d}]: Error = {error}")
+        )
 
         # Exchange gamma values (for future weighting/update & error evaluation)
         uncertain_vals_old = uncertain_vals
