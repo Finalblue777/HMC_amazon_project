@@ -49,11 +49,76 @@ except (ImportError):
     gams = None
 
 
-# Local Debugging flag; remove when all tested
+# Usefule Variables:
 _DEBUG = False
+_GAMS_SYSTEM_LOADER = os.path.join(
+    os.path.dirname(__file__),
+    '_gams_system_directory.dat'
+)
 
-# ## Define a log density function suitable for MCMC sampling
-#     Note that the log-density is the logarithm of the target density discarding any normalization factor
+
+class TextColor:
+    """Class with text colors and font settings for printing"""
+    PURPLE = '\033[95m'
+    CYAN = '\033[96m'
+    DARKCYAN = '\033[36m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+
+def decorate_text(text):
+    sep = "*" * 48
+    return f"{TextColor.BOLD}{TextColor.DARKCYAN}\n\n{sep}\n\t{text}\n{sep}\n{TextColor.END}\n"
+
+
+def get_gams_system_directory(filepath=_GAMS_SYSTEM_LOADER, ):
+    """
+    Load the GAMS system directory from file or ask the user about it
+
+    An example is that the GAMS System Directory could be (this is what Was hard coded):
+    `/Library/Frameworks/GAMS.framework/Versions/43/Resources`
+    """
+    if not os.path.isfile(filepath):
+        gams_sys_dir = None
+
+    else:
+        # Load the path from file and validate
+        with open(filepath, 'r') as f_id:
+            gams_sys_dir = f_id.read().strip(' \n')
+
+        if not gams_sys_dir:
+            # The filepath is empty and will be overwritten
+            # os.remove(filepath)
+            gams_sys_dir = None
+
+        elif not os.path.isdir(gams_sys_dir):
+            # The file contains a path to an invalid directory
+            print(
+                f"The GAMS system directory below is not valid\n"
+                f"Invalid GAMS System Dir: '{gams_sys_dir}'"
+            )
+            gams_sys_dir = None
+
+    if gams_sys_dir is None:
+        # Either file does not exist or path in it is invalid.
+        # Ask user for a valid path, then write it to file and validate
+        prompt = f"\n**\nPlease input FULL path to GAMS system directory/resources.\n"
+        prompt += f"For example: '/Library/Frameworks/GAMS.framework/Versions/43/Resources'\n$ "
+        gams_sys_dir = input(prompt).strip(""" \n" '  """)
+        # Write it to file and recurse
+        with open(filepath, 'w') as f_id:
+            f_id.write(gams_sys_dir)
+
+        # Recurse to validate the path
+        return get_gams_system_directory(
+            filepath=filepath,
+        )
+
+    return gams_sys_dir
 
 def log_density_function(uncertain_val,
                          uncertain_vals_mean,
@@ -83,6 +148,8 @@ def log_density_function(uncertain_val,
     Define a function to evaluate log-density of the objective/posterior distribution
     Some of the input parameters are updated at each cycle of the outer loop (optimization loop),
     and it becomes then easier/cheaper to udpate the function stamp and keep it separate here
+
+    Note that the log-density is the logarithm of the target density discarding any normalization factor
     """
     if not two_param_uncertainty:
         # One parameter (gamma) uncertainty
@@ -181,7 +248,7 @@ def solve_with_casadi(
     zeta              = 1.66e-4*1e9,  # zeta := 1.66e-4*norm_fac  #
     #
     max_iter          = 200,
-    tol               = 0.01,
+    tol               = 0.001,
     T                 = 200,
     N                 = 200,
     #
@@ -189,6 +256,7 @@ def solve_with_casadi(
     mode_as_solution  = False,   # If true, use the mode (point of high probability) as solution for gamma
     final_sample_size = 100_00,  # number of samples to collect after convergence
     two_param_uncertainty = False,
+    weight=0.25,     # <-- Not sure how this linear combination weighting helps!
     output_dir='Casadi_Results',
     ):
     """
@@ -323,7 +391,12 @@ def solve_with_casadi(
 
     # Loop until convergence
     while cntr < max_iter and error > tol:
-        if two_param_uncertainty == False:
+        print(
+            decorate_text(f"Optimization Iteration[{cntr+1}/{max_iter}]")
+        )
+
+        if not two_param_uncertainty:
+        # One parameter (gamma) uncertainty
             # Update x0
             x0_vals = uncertain_vals * forestArea_2017_ha / norm_fac
             # Construct Matrix A from new uncertain_vals
@@ -340,9 +413,10 @@ def solve_with_casadi(
             D[-2, :] = -uncertain_vals
             D = casadi.sparsify(D)
 
-        elif two_param_uncertainty == True:
-            x0_vals = uncertain_vals[size:] * forestArea_2017_ha / norm_fac
+        else:
+            # Two parameter uncertainty (both theta and gamma)
 
+            x0_vals = uncertain_vals[size:] * forestArea_2017_ha / norm_fac
 
             # Construct Matrix A from new uncertain_vals
             A[: -2, :]        = 0.0
@@ -400,12 +474,17 @@ def solve_with_casadi(
 
         opti.subject_to(Ua == casadi.sum1(Up+Um)**2)
 
-        if two_param_uncertainty == False:
+        if not two_param_uncertainty:
+            # One parameter (gamma) uncertainty
+
             # Set teh optimization problem
             term1 =   casadi.sum2(ds_vect[0: N, :].T * Ua * zeta / 2)
             term2 = - casadi.sum2(ds_vect[0: N, :].T * (pf * (X[-2, 1: ] - X[-2, 0 :-1])))
             term3 = - casadi.sum2(ds_vect.T * casadi.sum1( (pa * theta_vals - pf * kappa ) * X[0: size, :] ))
-        elif two_param_uncertainty == True:
+
+        else:
+            # Two parameter uncertainty (both theta and gamma)
+
             term1 =   casadi.sum2(ds_vect[0: N, :].T * Ua * zeta / 2)
             term2 = - casadi.sum2(ds_vect[0: N, :].T * (pf * (X[-2, 1: ] - X[-2, 0 :-1])))
             term3 = - casadi.sum2(ds_vect.T * casadi.sum1( (pa * uncertain_vals[0:size] - pf * kappa ) * X[0: size, :] ))
@@ -507,7 +586,6 @@ def solve_with_casadi(
         collected_ensembles.update({cntr: gamma_post_samples.copy()})
 
         # Update gamma value
-        weight     = 0.25  # <-- Not sure how this linear combination weighting helps!
         if mode_as_solution:
             raise NotImplementedError("We will consider this in the future; trace sampled points and keep track of objective values to pick one with highest prob. ")
 
@@ -526,11 +604,14 @@ def solve_with_casadi(
         # Increase the counter
         cntr += 1
 
+        # Update results directory
         results.update({'cntr': cntr,
                         'error_tracker':np.asarray(error_tracker),
                         'uncertain_vals_tracker': np.asarray(uncertain_vals_tracker),
                         'collected_ensembles':collected_ensembles,
                         })
+
+        # Save results (overwrite existing file)
         saveto = os.path.join(output_dir, 'results.pcl')
         pickle.dump(results, open(saveto, 'wb'))
 
@@ -555,6 +636,8 @@ def solve_with_casadi(
     )
     final_sample = np.asarray(final_sample)
     results.update({'final_sample': final_sample})
+
+    # Save results (overwrite existing file)
     saveto = os.path.join(output_dir, 'results.pcl')
     pickle.dump(results, open(saveto, 'wb'))
     print(f"Results saved to {saveto}")
@@ -583,6 +666,7 @@ def solve_with_gams(
     mode_as_solution  = False,   # If true, use the mode (point of high probability) as solution for gamma
     final_sample_size = 100_00,  # number of samples to collect after convergence
     two_param_uncertainty = False,
+    weight=0.25,     # <-- Not sure how this linear combination weighting helps!
     output_dir='GAMS_Results',
     ):
     """
@@ -596,6 +680,10 @@ def solve_with_gams(
         print("Failed to import GAMS. This function requires GAMSto be installed!")
         raise ImportError
 
+    # Create the output directory
+    if not os.path.isdir(output_dir):
+        os.makedirs(output_dir)
+
     # Load sites' data
     (
         zbar_2017,
@@ -607,14 +695,12 @@ def solve_with_gams(
         thetaSD,
     ) = load_site_data(site_num, norm_fac=norm_fac, )
 
-
     # Evaluate Gamma values ()
     gamma_1_vals  = gamma -  gammaSD
     gamma_2_vals  = gamma +  gammaSD
     size    = gamma.size
     # Theta Values
     theta_vals  = theta
-
 
     # time step!
     dt = T / N
@@ -623,11 +709,12 @@ def solve_with_gams(
     ds_vect = np.exp(- delta_t * np.arange(N+1) * dt)
     ds_vect = np.reshape(ds_vect, (ds_vect.size, 1))
 
-
     # Retrieve z data for selected site(s)
     site_z_vals  = z_2017
 
-    if two_param_uncertainty == False:
+    if not two_param_uncertainty:
+        # One parameter (gamma) uncertainty
+
         # Evaluate mean and covariances from site data
         site_stdev       = gammaSD
         site_covariances = np.diag(np.power(site_stdev, 2))
@@ -639,7 +726,9 @@ def solve_with_gams(
         uncertain_vals_mean = gamma.copy()
         uncertain_vals_old  = gamma.copy()
 
-    elif two_param_uncertainty == True:
+    else:
+        # Two parameter uncertainty (both theta and gamma)
+
         vals = np.concatenate((theta_vals, gamma_vals))
         # Evaluate mean and covariances from site data
         site_stdev       = np.concatenate((theta_SD, gamma_SD))
@@ -701,83 +790,113 @@ def solve_with_gams(
 
     # Loop until convergence
     while cntr < max_iter and error > tol:
-        if two_param_uncertainty == False:
+        print(
+            decorate_text(f"Optimization Iteration[{cntr+1}/{max_iter}]")
+        )
+
+        if not two_param_uncertainty:
+            # One parameter (gamma) uncertainty
 
             # Update x0
             x0_vals = uncertain_vals * forestArea_2017_ha
 
             x0data = pd.DataFrame(x0_vals)
-            x0data.to_csv('X0Data.csv')
+            saveto = os.path.join(output_dir, 'X0Data.csv')
+            x0data.to_csv(saveto)
 
             gammadata = pd.DataFrame(uncertain_vals)
+            saveto = os.path.join(output_dir, 'GammaData.csv')
+            gammadata.to_csv(saveto)
 
-            gammadata.to_csv('GammaData.csv')
+            # Create Gams Workspace
+            ws = GamsWorkspace(
+                system_directory=get_gams_system_directory(),
+                working_directory=output_dir,
+            )
 
-            cwd = os.getcwd() # get current working directory
-
-            # TODO: This is very hacky and not portable!
-            ws = GamsWorkspace(system_directory=r"/Library/Frameworks/GAMS.framework/Versions/43/Resources", working_directory=cwd)
-            print(f"amazon_{size}sites.gms")
+            # TODO: I am not sure where these GAMS model files are generated!
+            # We may need some gams_model_dir to put these files in for other sites as well!
+            # print(f"amazon_{size}sites.gms")
             t1 = ws.add_job_from_file(f"amazon_{size}sites.gms")
             t1.run()
-            dfu = pd.read_csv('amazon_data_u.dat', delimiter='\t')
+
+            readfrom = os.path.join(output_dir, 'amazon_data_u.dat')
+            dfu = pd.read_csv(readfrom, delimiter='\t')
             # Process the data using the pandas DataFrame
             dfu=dfu.drop('T/R ', axis=1)
             sol_val_Up =dfu.to_numpy()
 
-            dfw = pd.read_csv('amazon_data_w.dat', delimiter='\t')
+            readfrom = os.path.join(output_dir, 'amazon_data_w.dat')
+            dfw = pd.read_csv(readfrom, delimiter='\t')
             # Process the data using the pandas DataFrame
             dfw =dfw.drop('T   ', axis=1)
             dfw_np = dfw.to_numpy()
 
-            dfx = pd.read_csv('amazon_data_x.dat', delimiter='\t')
+            readfrom = os.path.join(output_dir, 'amazon_data_x.dat')
+            dfx = pd.read_csv(readfrom, delimiter='\t')
             # Process the data using the pandas DataFrame
             dfx =dfx.drop('T   ', axis=1)
             dfx_np = dfx.to_numpy()
 
-            dfz = pd.read_csv('amazon_data_z.dat', delimiter='\t')
+            readfrom = os.path.join(output_dir, 'amazon_data_z.dat')
+            dfz = pd.read_csv(readfrom, delimiter='\t')
             # Process the data using the pandas DataFrame
             dfz=dfz.drop('T/R ', axis=1)
             dfz_np =dfz.to_numpy()
 
             sol_val_Ua = dfw_np**2
             sol_val_X = np.concatenate((dfz_np.T, dfx_np.T))
-        elif two_param_uncertainty == True:
+
+
+        else:
+            # Two parameter uncertainty (both theta and gamma)
+
             # Update x0
             x0_vals = uncertain_vals[size:] * forestArea_2017_ha
 
             x0data = pd.DataFrame(x0_vals)
-            x0data.to_csv('X0Data.csv')
+            saveto = os.path.join(output_dir, 'X0Data.csv')
+            x0data.to_csv(saveto)
 
             gammadata = pd.DataFrame(uncertain_vals[size:])
-
-            gammadata.to_csv('GammaData.csv')
+            saveto = os.path.join(output_dir, 'GammaData.csv')
+            gammadata.to_csv(saveto)
 
             thetadata = pd.DataFrame(uncertain_vals[0:size])
-            thetadata.to_csv('ThetaData.csv')
+            saveto = os.path.join(output_dir, 'ThetaData.csv')
+            thetadata.to_csv(saveto)
 
-            cwd = os.getcwd() # get current working directory
-
-            # TODO: This is very hacky and not portable!
-            ws = GamsWorkspace(system_directory=r"/Library/Frameworks/GAMS.framework/Versions/43/Resources", working_directory=cwd)
+            # Create Gams Workspace
+            ws = GamsWorkspace(
+                system_directory=get_gams_system_directory(),
+                working_directory=output_dir,
+            )
+            # TODO: I am not sure where these GAMS model files are generated!
+            # We may need some gams_model_dir to put these files in for other sites as well!
             t1 = ws.add_job_from_file(f"amazon_{size}sites_2_param.gms")
             t1.run()
-            dfu = pd.read_csv('amazon_data_u.dat', delimiter='\t')
+
+            readfrom = os.path.join(output_dir, 'amazon_data_u.dat')
+            dfu = pd.read_csv(readfrom, delimiter='\t')
+
             # Process the data using the pandas DataFrame
             dfu=dfu.drop('T/R ', axis=1)
             sol_val_Up =dfu.to_numpy()
 
-            dfw = pd.read_csv('amazon_data_w.dat', delimiter='\t')
+            readfrom = os.path.join(output_dir, 'amazon_data_w.dat')
+            dfw = pd.read_csv(readfrom, delimiter='\t')
             # Process the data using the pandas DataFrame
             dfw =dfw.drop('T   ', axis=1)
             dfw_np = dfw.to_numpy()
 
-            dfx = pd.read_csv('amazon_data_x.dat', delimiter='\t')
+            readfrom = os.path.join(output_dir, 'amazon_data_x.dat')
+            dfx = pd.read_csv(readfrom, delimiter='\t')
             # Process the data using the pandas DataFrame
             dfx =dfx.drop('T   ', axis=1)
             dfx_np = dfx.to_numpy()
 
-            dfz = pd.read_csv('amazon_data_z.dat', delimiter='\t')
+            readfrom = os.path.join(output_dir, 'amazon_data_z.dat')
+            dfz = pd.read_csv(readfrom, delimiter='\t')
             # Process the data using the pandas DataFrame
             dfz=dfz.drop('T/R ', axis=1)
             dfz_np =dfz.to_numpy()
