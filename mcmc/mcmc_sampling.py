@@ -157,7 +157,7 @@ class HMCSampler(Sampler):
         'log_density':None,
         'log_density_grad':None,
         'parallel_fd_grad':False,
-        'random_seed':123,
+        'random_seed':None,
         'burn_in':500,
         'mix_in':10,
         'symplectic_integrator':'verlet',
@@ -371,7 +371,7 @@ class HMCSampler(Sampler):
         func = self._LOG_DENSITY
         evaluator = FDGradient(func=func, x=x,)
         with ProcessPoolExecutor() as executor:
-            print("Evaluating Gradient")
+            print("Evaluating Gradient with Multithreading")
             grad = np.asarray([v for v in executor.map(evaluator, range(len(x)))])
             print("Done.")
             return grad
@@ -392,7 +392,7 @@ class HMCSampler(Sampler):
             xl = [x for _ in range(x.size)]
 
             with ProcessPoolExecutor(processes) as executor:
-                print("Threads; Evaluating Gradient")
+                print("Evaluating Gradient with Multithreading")
                 grad = np.asarray([v for v in executor.map(self.__fd_grad_entry, zip(xl, range(x.size)))])
                 print("Done")
         return func_grad
@@ -461,7 +461,9 @@ class HMCSampler(Sampler):
         # Log-Density gradient
         log_density_grad = self._CONFIGURATIONS['log_density_grad']
         if log_density_grad is None:
+            # Serial version of the gradient evaluation using FD
             log_density_grad_serial   = self.__create_func_grad(log_density, size=size)
+            # Parallel versions of the gradient evaluation using FD
             log_density_grad_parallel = lambda x: self.__parallel_func_grad(x, processes=min(size, multiprocess.cpu_count()))
             log_density_grad_threaded = lambda x: self.__threaded_func_grad(x, processes=min(size, multiprocess.cpu_count()))
             # log_density_grad = self.__create_threaded_func_grad(processes=min(size, multiprocess.cpu_count()))
@@ -469,41 +471,63 @@ class HMCSampler(Sampler):
             # Test serial gradient
             test_vec = np.random.randn(size)
 
-            # Test Serial vs. Paralle gradient timing; TODO: Maybe remove after debugging
-            try:
-                start_time = time.time()
-                _ = log_density_grad_parallel(test_vec)
-                print(f"Parallel gradient took: {time.time()-start_time} seconds")
-                parallel_failed = False
-            except:
-                print("Failed to use Parallel Gradient")
-                parallel_failed = True
 
-            try:
-                start_time = time.time()
-                _ = log_density_grad_threaded(test_vec)
-                print(f"Threaded gradient took: {time.time()-start_time} seconds")
-                threaded_failed = False
-            except:
-                print("Failed to use Parallel Gradient")
-                threaded_failed = True
-
-            # Test Serial Gradient timing
-            start_time = time.time()
-            grad = log_density_grad_serial(test_vec)
-            print(f"Serial gradient took: {time.time()-start_time} seconds")
-
-            #
             if self._CONFIGURATIONS['parallel_fd_grad']:
-                if not parallel_failed:
+                print(
+                    "Testing parallel gradient evaluation"
+                )
+                # Test Serial vs. Paralle gradient timing
+                parallel_failed = threaded_failed = True  # Initialization
+
+                try:
+                    start_time = time.time()
+                    _ = log_density_grad_parallel(test_vec)
+                    print(f"Parallel gradient (with multiprocessing) took: {time.time()-start_time} seconds")
+                    parallel_failed = False
+                except:
+                    print("Failed to use Parallel Gradient with MultiProcessing")
+
+                # ONLY if Multiprocess version failed try multithreading
+                if parallel_failed:
+                    try:
+                        start_time = time.time()
+                        _ = log_density_grad_threaded(test_vec)
+                        print(f"Threaded gradient (with multithreading) took: {time.time()-start_time} seconds")
+                        threaded_failed = False
+                    except:
+                        print("Failed to use Parallel Gradient Multithreading")
+
+                if not (parallel_failed and threaded_failed):
+                    # Test Serial Gradient timing
+                    start_time = time.time()
+                    _ = log_density_grad_serial(test_vec)
+                    print(f"Serial gradient took: {time.time()-start_time} seconds")
+
+
+                if parallel_failed and threaded_failed:
+                    # revert to serial
+                    print(
+                        "Cannot generate gradient in parallel.\n"
+                        "Neither The Prallel Nor the Threaded gradient could be executed.\n"
+                        "Reverting to serial gradient evaluation"
+                    )
+                    self._CONFIGURATIONS['parallel_fd_grad'] = False
+
+                    log_density_grad = log_density_grad_serial
+
+                elif not parallel_failed:
                     log_density_grad = log_density_grad_parallel
+
                 elif not threaded_failed:
                     log_density_grad = log_density_grad_threaded
+
                 else:
-                    print("Neither The Prallel Nor the Threaded gradient could be executed; resorting to serial gradient ")
-                log_density_grad = log_density_grad_serial
+                    print("This is not possible to show; report this bug!")
+                    raise ValueError
+
             else:
                 log_density_grad = log_density_grad_serial
+
 
         elif not callable(log_density_grad):
             print(f"The 'log_density_grad' found in the configurations is not a valid callable/function!")
@@ -1194,6 +1218,7 @@ def create_hmc_sampler(size,
                        symplectic_integrator_stepsize=1e-2,
                        symplectic_integrator_num_steps=20,
                        mass_matrix=1e-1,
+                       random_seed=1011,
                        constraint_test=None,
                        ):
     """
@@ -1213,6 +1238,7 @@ def create_hmc_sampler(size,
         symplectic_integrator_stepsize=symplectic_integrator_stepsize,
         symplectic_integrator_num_steps=symplectic_integrator_num_steps,
         mass_matrix=mass_matrix,
+        random_seed=random_seed,
         constraint_test=constraint_test,
     )
     return HMCSampler(configs)

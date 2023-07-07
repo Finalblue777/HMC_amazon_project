@@ -33,7 +33,7 @@ else:  # new API structure
     import gams.core.gdx as gdx
     from gams.control import *
     import gams.transfer as gt
-    
+
 # ## Define a log density function suitable for MCMC sampling
 #     Note that the log-density is the logarithm of the target density discarding any normalization factor
 
@@ -61,7 +61,7 @@ def main(
     sample_size       = 1000,    # simulations before convergence (to evaluate the mean)
     mode_as_solution  = False,   # If true, use the mode (point of high probability) as solution for gamma
     final_sample_size = 100_00,  # number of samples to collect after convergence
-    two_param_uncertainty = False 
+    two_param_uncertainty = False
     ):
     """
     Main function; putting things together
@@ -90,8 +90,8 @@ def main(
     size    = gamma.size
     # Theta Values
     theta_vals  = theta
-    
-    
+
+
     # time step!
     dt = T / N
 
@@ -102,7 +102,7 @@ def main(
 
     # Retrieve z data for selected site(s)
     site_z_vals  = z_2017
-    
+
     if two_param_uncertainty == False:
         # Evaluate mean and covariances from site data
         site_stdev       = gammaSD
@@ -127,7 +127,7 @@ def main(
         uncertain_vals      = vals.copy()
         uncertain_vals_mean = vals.copy()
         uncertain_vals_old  = vals.copy()
-    
+
     # Householder to track sampled gamma values
     # uncertain_vals_tracker       = np.empty((uncertain_vals.size, sample_size+1))
     # uncertain_vals_tracker[:, 0] = uncertain_vals.copy()
@@ -227,7 +227,7 @@ def main(
             gammadata = pd.DataFrame(uncertain_vals[size:])
 
             gammadata.to_csv('GammaData.csv')
-            
+
             thetadata = pd.DataFrame(uncertain_vals[0:size])
             thetadata.to_csv('ThetaData.csv')
 
