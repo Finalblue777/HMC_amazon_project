@@ -154,6 +154,7 @@ obj_def..
     
 model amazon / all /;
 
+/* TODO, add individual outputdir for the results */
 file results_x / "amazon_data_x.dat" /;
 file results_w / "amazon_data_w.dat" /;
 
