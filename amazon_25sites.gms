@@ -9,6 +9,7 @@ scalar scale / 1.0e6 /;
 
 parameter x0(R) ;
 
+/* TODO: Add individual directory to read the csv file and store the gdx files */
 /* Read csv and transfer to gdx */
 $call csv2gdx X0Data.csv id=x0  index=1 values=2..lastCol useHeader=y trace=0
 $gdxIn X0Data.gdx
