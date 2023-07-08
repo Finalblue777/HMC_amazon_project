@@ -600,7 +600,8 @@ def solve_with_casadi(
         uncertain_vals_tracker.append(uncertain_vals.copy())
 
         # Evaluate error for convergence check
-        error = np.max(np.abs(uncertain_vals_old-uncertain_vals) / uncertain_vals_old)
+        # The percentage difference are changed to absolute difference
+        error = np.max(np.abs(uncertain_vals_old-uncertain_vals))
         error_tracker.append(error)
         print(
             decorate_text(f"Iteration [{cntr+1:4d}]: Error = {error}")
@@ -976,8 +977,9 @@ def solve_with_gams(
             uncertain_vals = weight * np.mean(gamma_post_samples, axis=0 ) + (1-weight) * uncertain_vals_old
         uncertain_vals_tracker.append(uncertain_vals.copy())
 
-        # Evaluate error for convergence check
-        error = np.max(np.abs(uncertain_vals_old-uncertain_vals) / uncertain_vals_old)
+        # Evaluate error for convergence check 
+        # The percentage difference are changed to absolute difference
+        error = np.max(np.abs(uncertain_vals_old-uncertain_vals))
         error_tracker.append(error)
         print(
             decorate_text(f"Iteration [{cntr+1:4d}]: Error = {error}")
