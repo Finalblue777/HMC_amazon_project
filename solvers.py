@@ -707,11 +707,10 @@ def solve_with_gams(
     # Evaluate Gamma values ()
     gamma_1_vals  = gamma -  gammaSD
     gamma_2_vals  = gamma +  gammaSD
-    gamma_vals    = gamma
     size    = gamma.size
     # Theta Values
     theta_vals  = theta
-    tot_size= gamma.size+theta.size
+
     # time step!
     dt = T / N
 
@@ -944,7 +943,7 @@ def solve_with_gams(
 
         # Create MCMC sampler & sample, then calculate diagnostics
         sampler = create_hmc_sampler(
-            size=tot_size,
+            size=size,
             log_density=log_density,
             #
             burn_in=100,
@@ -952,7 +951,7 @@ def solve_with_gams(
             symplectic_integrator='verlet',
             symplectic_integrator_stepsize=1e-1,
             symplectic_integrator_num_steps=3,
-            mass_matrix=(5e+3,1e+1),
+            mass_matrix=1e+1,
             constraint_test=lambda x: True if np.all(x>=0) else False,
         )
 

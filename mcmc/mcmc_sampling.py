@@ -26,8 +26,6 @@ import numpy as np
 
 try:
     from scipy import sparse
-    from scipy.sparse import csc_matrix
-    from scipy.sparse import linalg
 except(ImportError):
     sparse = None
 
@@ -320,39 +318,39 @@ class HMCSampler(Sampler):
         size = self._CONFIGURATIONS['size']
         mass_matrix = self._CONFIGURATIONS['mass_matrix']
 
-#         if isinstance(mass_matrix, numbers.Number):
-# #             if mass_matrix <= 0:
-# #                 print(f"NonPositive momentum covariance (mass) value!")
-# #                 raise ValueError
+        if isinstance(mass_matrix, numbers.Number):
+            if mass_matrix <= 0:
+                print(f"NonPositive momentum covariance (mass) value!")
+                raise ValueError
 
-        if sparse is not None:
-            mass_matrix = sparse.diags(np.block([[mass_matrix[0]*np.ones(int(size/2)),mass_matrix[1]*np.ones(int(size/2))]]),[0])
+            if sparse is not None:
+                mass_matrix = sparse.diags(mass_matrix*np.ones(size), shape=(size, size))
+            else:
+                mass_matrix = np.array([[mass_matrix]])
+
+        elif isinstance(mass_matrix, np.ndarray):
+            if mass_matrix.shape != (size, size):
+                print(f"The mass matrix found has wrong shape"
+                      f" > Expected: matrix/array of shape ({size}, {size})"
+                      f" > Found matrix of shape: {mass_matrix.shape}")
+                raise TypeError
+
+        elif sparse is not None and isinstance(mass_matrix, sparse.spmatrix):
+            if mass_matrix.shape != (size, size):
+                print(f"The mass matrix has wrong shape of {mass_matrix.shape}"
+                      f" > Expected: matrix/array of shape ({size}, {size})")
+                raise TypeError
+
         else:
-            mass_matrix = np.array([[mass_matrix]])
-
-#         elif isinstance(mass_matrix, np.ndarray):
-#             if mass_matrix.shape != (size, size):
-#                 print(f"The mass matrix found has wrong shape"
-#                       f" > Expected: matrix/array of shape ({size}, {size})"
-#                       f" > Found matrix of shape: {mass_matrix.shape}")
-#                 raise TypeError
-
-#         elif sparse is not None and isinstance(mass_matrix, sparse.spmatrix):
-#             if mass_matrix.shape != (size, size):
-#                 print(f"The mass matrix has wrong shape of {mass_matrix.shape}"
-#                       f" > Expected: matrix/array of shape ({size}, {size})")
-#                 raise TypeError
-
-#         else:
-#             print(f"Invalid type of the mass matrix {type(mass_matrix)}!"
-#                   f"Expected, scalar, np array or sparse matrix/array")
-#             raise TypeError
+            print(f"Invalid type of the mass matrix {type(mass_matrix)}!"
+                  f"Expected, scalar, np array or sparse matrix/array")
+            raise TypeError
 
         # Create the inverse of the mass matrix once.
         if sparse is not None:
-            self._MASS_MATRIX     = csc_matrix(mass_matrix)
+            self._MASS_MATRIX     = sparse.csc_array(mass_matrix)
             self._MASS_MATRIX_INV = sparse.linalg.inv(self._MASS_MATRIX)
-            
+
         else:
             self._MASS_MATRIX = np.asarray(mass_matrix)
             self._MASS_MATRIX_INV = np.linalg.inv(self._MASS_MATRIX)
@@ -632,36 +630,36 @@ class HMCSampler(Sampler):
         ## Mass matrix (covariance of the momentum)
         mass_matrix = aggr_configs['mass_matrix']
 
-#         if isinstance(mass_matrix, numbers.Number):
-#             if mass_matrix <= 0:
-#                 if raise_for_invalid:
-#                     print(f"NonPositive momentum covariance (mass) value!")
-#                     raise TypeError
-#                 else:
-#                     is_valid = False
-#                     return is_valid
+        if isinstance(mass_matrix, numbers.Number):
+            if mass_matrix <= 0:
+                if raise_for_invalid:
+                    print(f"NonPositive momentum covariance (mass) value!")
+                    raise TypeError
+                else:
+                    is_valid = False
+                    return is_valid
 
-#         elif isinstance(mass_matrix, np.ndarray):
-#             if mass_matrix.shape != (size, size):
-#                 if raise_for_invalid:
-#                     print(f"The mass matrix found has wrong shape"
-#                           f" > Expected: matrix/array of shape ({size}, {size})"
-#                           f" > Found matrix of shape: {mass_matrix.shape}")
-#                     raise TypeError
-#                 else:
-#                     is_valid = False
-#                     return is_valid
+        elif isinstance(mass_matrix, np.ndarray):
+            if mass_matrix.shape != (size, size):
+                if raise_for_invalid:
+                    print(f"The mass matrix found has wrong shape"
+                          f" > Expected: matrix/array of shape ({size}, {size})"
+                          f" > Found matrix of shape: {mass_matrix.shape}")
+                    raise TypeError
+                else:
+                    is_valid = False
+                    return is_valid
 
-#         elif sparse is not None and isinstance(mass_matrix, sparse.spmatrix):
-#             if mass_matrix.shape != (size, size):
-#                 print(f"The mass matrix has wrong shape of {mass_matrix.shape}"
-#                       f" > Expected: matrix/array of shape ({size}, {size})")
-#                 raise TypeError
+        elif sparse is not None and isinstance(mass_matrix, sparse.spmatrix):
+            if mass_matrix.shape != (size, size):
+                print(f"The mass matrix has wrong shape of {mass_matrix.shape}"
+                      f" > Expected: matrix/array of shape ({size}, {size})")
+                raise TypeError
 
-#         else:
-#             print(f"Invalid type of the mass matrix {type(mass_matrix)}!"
-#                   f"Expected, scalar, np array or sparse matrix/array")
-#             raise TypeError
+        else:
+            print(f"Invalid type of the mass matrix {type(mass_matrix)}!"
+                  f"Expected, scalar, np array or sparse matrix/array")
+            raise TypeError
 
         # TODO: Proceed here
         ## Test the Symplectic symplectic_integrator parameters (symplectic_integrator name, step size, number of steps)
@@ -1051,7 +1049,7 @@ class HMCSampler(Sampler):
                 symplectic_integrator=symplectic_integrator,
             )
 
-#             print("proposed_momentum, proposed_state", proposed_momentum, proposed_state)
+            # print("proposed_momentum, proposed_state", proposed_momentum, proposed_state)
 
             ## MH step (Accept/Reject) proposed (momentum, state)
             # Calculate acceptance proabability
@@ -1059,23 +1057,18 @@ class HMCSampler(Sampler):
             # Here, we evaluate the kernel of the posterior at both the current and the proposed state proposed_state)
             current_energy  = self.total_Hamiltonian(momentum=current_momentum, state=current_state)
             constraint_violated = False
-#             if constraint_test is not None:
-#                 if not constraint_test(proposed_state): constraint_violated = True
+            if constraint_test is not None:
+                if not constraint_test(proposed_state): constraint_violated = True
 
             if constraint_violated:
                 acceptance_probability = 0
-                print("constraint violated")
+
             else:
                 proposal_kinetic_energy   = self.kinetic_energy(proposed_momentum)
                 proposal_potential_energy = self.potential_energy(proposed_state)
                 proposal_energy           = proposal_kinetic_energy + proposal_potential_energy
 
                 energy_loss = proposal_energy - current_energy
-                
-#                 print("proposed_momentum",proposed_momentum)
-#                 print("energy_loss",energy_loss,"proposal_energy",proposal_energy,"current_energy",current_energy,
-#                         "proposal_kinetic_energy",proposal_kinetic_energy,"proposal_potential_energy",proposal_potential_energy)
-                
                 _loss_thresh = 1000
                 if abs(energy_loss) >= _loss_thresh:  # this should avoid overflow errors
                     if energy_loss < 0:
@@ -1084,7 +1077,6 @@ class HMCSampler(Sampler):
                         sign = 1
                     energy_loss = sign * _loss_thresh
                 acceptance_probability = np.exp(-energy_loss)
-                
                 acceptance_probability = min(acceptance_probability, 1.0)
 
                 # Update Mode (Map Point Estimate)
@@ -1225,7 +1217,7 @@ def create_hmc_sampler(size,
                        symplectic_integrator='verlet',
                        symplectic_integrator_stepsize=1e-2,
                        symplectic_integrator_num_steps=20,
-                       mass_matrix=(5000,1),
+                       mass_matrix=1e-1,
                        random_seed=1011,
                        constraint_test=None,
                        ):
